@@ -1,0 +1,2 @@
+// Photography themes for the campaign places.
+export const CHAPTER_SUBJECTS=['Pale stone and evening light','Garden paths and moss','Warm stone and long shadows','Terraces by the water','Patterns under the stars','Morning light and little rooftops','Coastal light','Blue doors and white walls','Lanterns after dark','Light through ice','Snow on the terraces','A garden after sunset','Courtyards above the clouds','Paths beneath the stars'];

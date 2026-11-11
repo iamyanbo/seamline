@@ -1,0 +1,110 @@
+[
+  {
+    "id": "satie",
+    "title": "Gymnopédie No. 1",
+    "composer": "Erik Satie",
+    "performer": "Robin Alciatore / Musopen",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Erik_Satie_-_gymnopedies_-_la_1_ere._lent_et_douloureux.ogg",
+    "sourceLicenseText": "Recording released into the public domain by its author, Robin Alciatore. Worldwide dedication, with an unrestricted license fallback where dedication is not possible. See the recording file page for the original notice.",
+    "file": "music/gymnopedie-1.mp3",
+    "modifications": "Trimmed outer silence; converted to MP3; increased gain 5.2 dB.",
+    "sha256": "be907a277ce3db1eb1877a20f93bbc8be6a2646b3e3fce7dd9952a7d93a09f61"
+  },
+  {
+    "id": "morning",
+    "title": "Morning Mood",
+    "composer": "Edvard Grieg",
+    "performer": "Czech National Symphony Orchestra / Musopen",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Musopen_-_Morning.ogg",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Greig_PeerGynt/EdvardGrieg-PeerGyntSuiteNo.1Op.46-01-Morning.ogg",
+    "sourceLicenseText": "=={{int:filedesc}}==\n{{Information\n|description={{en|1=\"[[:en:Morning Mood|Morning Mood]]\" by [[Edvard Grieg]], performed by the [[:en:Czech National Symphony Orchestra|Czech National Symphony Orchestra]] as the Musopen Symphony Orchestra for the Musopen Kickstarter Project.}}\n{{pl|1=„Morning Mood” [[:pl:Edvard Grieg|Edvarda Griega]] w wykonaniu Czeskiej Narodowej Orkiestry Symfonicznej.}}\n{{cs|{{w|Edvard Grieg||cs}}: skladba \"Morning Mood\" ''(Ranní nálada)'' hraje [[:cs:Český národní symfonický orchestr|Český národní symfonický orchestr]].}}\n{{mk|„[[:en:Morning Mood|Утро]]“ од {{wm|Едвард Григ}} во изведба на [[:en:Czech National Symphony Orchestra|Народниот симфониски орјкестар на Чешка]].}}\n|date=2012-04-07\n|source={{Musopen|https://musopen.org/music/777-peer-gynt-suite-no-1-op-46/}}\n|author=Grieg, Edvard; Musopen Symphony Orchestra\n|permission=\n|other_versions={{fl|Grieg - Peer Gynt Suite No. 1, Op. 46 - I. Morning Mood (Musopen Symphony).flac}}\n|other_fields=\n}}\n\n=={{Assessment}}==\n{{Media of the day|2016|07|07}} \n\n=={{int:license-header}}==\n{{PD-author|[https://musopen.org/music/777-peer-gynt-suite-no-1-op-46/ Musopen]}}\n\n[[Category:Peer Gynt (Grieg)|Morning Mood]]\n[[Category:Audio files of music by Edvard Grieg]]\n[[Category:Morning in art]]",
+    "file": "music/morning.mp3",
+    "sha256": "5220b6d991ac6f94e2f5dcb75bc9fa769fd5be24577585623461508d8fbb6918"
+  },
+  {
+    "id": "goldberg",
+    "title": "Goldberg Variations: Aria",
+    "composer": "Johann Sebastian Bach",
+    "performer": "Shelley Katz / Musopen",
+    "license": "CC0 1.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Bach,_Goldberg_Variations,_Aria_(Musopen_version).ogg",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Bach_GoldbergVariations/JohannSebastianBach-01-GoldbergVariationsBwv.988-Aria.ogg",
+    "sourceLicenseText": "== {{int:filedesc}} ==\n{{Information\n|Description    ={{en|1=Aria from the Goldberg Variations. Converted form the FLAC file at https://archive.org/details/MusopenCollectionAsFlac.\n\nNote that this recording is not the one from Open Goldberg Variations, but commissioned by Musopen itself.\n}}\n|Source         ={{Musopen|http://musopen.org/music/piece/937}}\n|Author         ={{Creator:Johann Sebastian Bach}} \nShelley Katz\n|Date           =\n|Permission     =\n|other_versions =\n}}\n== {{int:license-header}} ==\n{{Cc-zero}}\n[[Category:Goldberg Variations]]",
+    "file": "music/goldberg.mp3",
+    "sha256": "2ec9febae0f37dbc18a8f4c2b3a182eda2c757db37c93540578398728a3ec48e"
+  },
+  {
+    "id": "mozart-andante",
+    "title": "String Quartet No. 15: Andante",
+    "composer": "Wolfgang Amadeus Mozart",
+    "performer": "Musopen String Quartet",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Mozart_-_String_Quartet_No._15_in_D_minor,_K421_-_II._Andante_(Musopen_String_Quartet).flac",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Mozart_StringQuartetNo.15inDMinorK421/WolfgangAmadeusMozart-StringQuartetNo.15InDMinorK421-02-Andante.ogg",
+    "sourceLicenseText": "=={{int:filedesc}}==\n{{Information\n|description={{en|1=Mozart - String Quartet No. 15 in D minor, K421 - II. Andante}}\nmovements: {{flatlist|\n*[[:File:Mozart - String Quartet No. 15 in D minor, K421 - I. Allegro moderato (Musopen String Quartet).flac|I. Allegro moderato]]\n*[[:File:Mozart - String Quartet No. 15 in D minor, K421 - II. Andante (Musopen String Quartet).flac|II. Andante]]\n*[[:File:Mozart - String Quartet No. 15 in D minor, K421 - III. Minuetto (Allegretto) (Musopen String Quartet).flac|III. Minuetto (Allegretto)]]\n*[[:File:Mozart - String Quartet No. 15 in D minor, K421 - IV. Allegro ma non troppo - Più allegro (Musopen String Quartet).flac|IV. Allegro ma non troppo - Più allegro]]\n}}\n|date=2012\n|source={{Musopen|https://musopen.org/music/2998-string-quartet-no-15-in-d-minor-k-421/}}\nhttps://archive.org/details/MusopenCollectionAsFlac\n|author=Composer: {{Creator:Wolfgang Amadeus Mozart}}\nArtists: Musopen String Quartet\n|permission=\n|other versions=\n}}\n\n=={{int:license-header}}==\n\n{{Copyright information |recording={{PD-author|[https://musopen.org/ Musopen]}} |musical composition={{PD-old-auto-expired|deathyear=1791}} }}\n\n[[Category:String Quartet No. 15 (Mozart)]]\n[[Category:Audio files of music by Wolfgang Amadeus Mozart]]\n[[Category:Musopen Kickstarter Project]]",
+    "file": "music/mozart-andante.mp3",
+    "sha256": "92594e9a53866605f7e1e7a7f5f775ab85c4ab7d9188c9d08bf47981c5701fa2"
+  },
+  {
+    "id": "brahms-andante",
+    "title": "Symphony No. 1: Andante sostenuto",
+    "composer": "Johannes Brahms",
+    "performer": "Czech National Symphony Orchestra / Musopen",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Brahms_-_Symphony_No._1_in_C_minor,_Op._68_-_II._Andante_sostenuto_(Musopen_Symphony).flac",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Brahms_SymphonyNo.1inCMinor/JohannesBrahms-SymphonyNo.1InCMinorOp.68-02-AndanteSostenuto.ogg",
+    "sourceLicenseText": "=={{int:filedesc}}==\n{{Information\n|description={{en|1=Brahms - Symphony No. 1 in C minor, Op. 68 - II. Andante sostenuto}}\nmovements: {{flatlist|\n*[[:File:Brahms - Symphony No. 1 in C minor, Op. 68 - I. Un poco sostenuto - Allegro - Meno allegro (Musopen Symphony).flac|I. Un poco sostenuto - Allegro - Meno allegro]]\n*[[:File:Brahms - Symphony No. 1 in C minor, Op. 68 - II. Andante sostenuto (Musopen Symphony).flac|II. Andante sostenuto]]\n*[[:File:Brahms - Symphony No. 1 in C minor, Op. 68 - III. Un poco allegretto e grazioso (Musopen Symphony).flac|III. Un poco allegretto e grazioso]]\n*[[:File:Brahms - Symphony No. 1 in C minor, Op. 68 - IV. Adagio - Piu andante - Allegro non troppo, ma con brio - Piu allegro (Musopen Symphony).flac|IV. Adagio - Piu andante - Allegro non troppo, ma con brio - Piu allegro]]\n}}\n|date=2012\n|source={{Musopen|https://musopen.org/music/64-symphony-no-1-in-c-minor-op-68/}}\nhttps://archive.org/details/MusopenCollectionAsFlac\n|author=Composer: {{Creator:Johannes Brahms}}\nArtists: Czech National Symphony Orchestra\n|permission=\n|other versions={{fl|Brahms, Symphony No. 1 in C Minor, Op. 68 - II. Andante sostenuto.ogg}}\n}}\n\n=={{int:license-header}}==\n{{Copyright information\n|recording={{PD-author|[https://musopen.org/ Musopen]}}\n|musical composition={{PD-old-auto-expired|deathyear=1897}}\n}}\n\n[[Category:Symphony No. 1 (Brahms)]]\n[[Category:Audio files of music by Johannes Brahms]]\n[[Category:Musopen Kickstarter Project]]",
+    "file": "music/brahms-andante.mp3",
+    "sha256": "7be3eb7b423c26b6ab17c1ccb2a78859e1531ecedfb71fd7d84ffb559c81a0c8"
+  },
+  {
+    "id": "steppes",
+    "title": "In the Steppes of Central Asia",
+    "composer": "Alexander Borodin",
+    "performer": "Musopen Symphony Orchestra",
+    "license": "CC0 1.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Alexander_Borodin_-_In_The_Steppes_Of_Central_Asia.ogg",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Borodin_InTheSteppesOfCentralAsia/AlexanderBorodin-InTheSteppesOfCentralAsia.ogg",
+    "sourceLicenseText": "== {{int:filedesc}} ==\n{{Information\n|Description    ={{en|1=Borodin: In the Steppes of Central Asia (Russian: В средней Азии, V srednyeĭ Azii, literally \"In Central Asia\")}}\n|Source         ={{Musopen|https://musopen.org/music/681-in-the-steppes-of-central-asia/}} (OGG from https://archive.org/details/MusopenCollectionAsFlac)\n|Author         =Musopen Symphony Orchestra\n|Date           =\n|Permission     =\n|other_versions ={{fl|Borodin - In the Steppes of Central Asia (Musopen Symphony).flac}}\n}}\n\n[[Category:Audio files of music by Alexander Borodin]]\n== {{int:license-header}} ==\n{{Cc-zero}}",
+    "file": "music/steppes.mp3",
+    "sha256": "efb357851320d7c45eb812d447547df0fc9798366e391a66adc62cc3e98908c5"
+  },
+  {
+    "id": "notturno",
+    "title": "String Quartet No. 2: Notturno",
+    "composer": "Alexander Borodin",
+    "performer": "Musopen String Quartet",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Borodin_-_String_Quartet_No._2_in_D_major_-_III._Notturno._Andante_(Musopen_String_Quartet).flac",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Borodin_StringQuartetNo.2inDMajor/AlexanderBorodin-StringQuartetNo.2InDMajor-03-NocturneAndante.ogg",
+    "sourceLicenseText": "=={{int:filedesc}}==\n{{Information\n|description={{en|1=Borodin - String Quartet No. 2 in D major - III. Notturno: Andante}}\nmovements: {{flatlist|\n*[[:File:Borodin - String Quartet No. 2 in D major - I. Allegro moderato (Musopen String Quartet).flac|I. Allegro moderato]]\n*[[:File:Borodin - String Quartet No. 2 in D major - II. Scherzo. Allegro (Musopen String Quartet).flac|II. Scherzo: Allegro]]\n*[[:File:Borodin - String Quartet No. 2 in D major - III. Notturno. Andante (Musopen String Quartet).flac|III. Notturno: Andante]]\n*[[:File:Borodin - String Quartet No. 2 in D major - IV. Finale. Andante - Vivace (Musopen String Quartet).flac|IV. Finale: Andante - Vivace]]\n}}\n|date=2012\n|source={{Musopen|https://musopen.org/music/690-string-quartet-no-2-in-d-major/}}\nhttps://archive.org/details/MusopenCollectionAsFlac\n|author=Composer: {{Creator:Alexander Borodin}}\nArtists: Musopen String Quartet\n|permission=\n|other versions=\n}}\n\n=={{int:license-header}}==\n\n{{Copyright information |recording={{PD-author|[https://musopen.org/ Musopen]}} |musical composition={{PD-old-auto-expired|deathyear=1887}} }}\n\n[[Category:Audio files of music by Alexander Borodin]]\n[[Category:Musopen Kickstarter Project]]",
+    "file": "music/notturno.mp3",
+    "sha256": "b10de413e2a4ddfa89ee6ed90f7c40696e4c20450f67e4cbcc3ce6e11796479b"
+  },
+  {
+    "id": "aase",
+    "title": "Peer Gynt: Åse’s Death",
+    "composer": "Edvard Grieg",
+    "performer": "Musopen Symphony Orchestra",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Grieg_-_Peer_Gynt_Suite_No._1,_Op._46_-_II._The_Death_of_Aase_(Musopen_Symphony).flac",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Greig_PeerGynt/EdvardGrieg-PeerGyntSuiteNo.1Op.46-02-AasesDeath.ogg",
+    "sourceLicenseText": "=={{int:filedesc}}==\n{{Information\n|description={{en|1=Grieg - Peer Gynt Suite No. 1, Op. 46 - II. The Death of Aase}}\nmovements: {{flatlist|\n*[[:File:Grieg - Peer Gynt Suite No. 1, Op. 46 - I. Morning Mood (Musopen Symphony).flac|I. Morning Mood]]\n*[[:File:Grieg - Peer Gynt Suite No. 1, Op. 46 - II. The Death of Aase (Musopen Symphony).flac|II. The Death of Aase]]\n*[[:File:Grieg - Peer Gynt Suite No. 1, Op. 46 - III. Anitra's Dance (Musopen Symphony).flac|III. Anitra's Dance]]\n*[[:File:Grieg - Peer Gynt Suite No. 1, Op. 46 - IV. In the Hall of the Mountain King (Musopen Symphony).flac|IV. In the Hall of the Mountain King]]\n}}\n|date=2012\n|source={{Musopen|https://musopen.org/music/777-peer-gynt-suite-no-1-op-46/}}\nhttps://archive.org/details/MusopenCollectionAsFlac\n|author=Composer: {{Creator:Edvard Grieg}}\nArtists: Musopen Symphony\n|permission=\n|other versions={{fl|Peer Gynt Suite No. 1, Op. 46 - II. Aase's Death.ogg}}\n}}\n\n=={{int:license-header}}==\n\n{{Copyright information |recording={{PD-author|[https://musopen.org/ Musopen]}} |musical composition={{PD-old-auto-expired|deathyear=1907}} }}\n\n[[Category:Peer Gynt (Grieg)]]\n[[Category:Audio files of music by Edvard Grieg]]\n[[Category:Musopen Kickstarter Project]]",
+    "file": "music/aase.mp3",
+    "sha256": "70ccb0b344b3ab3cbcdcf3c1097a6f275a7a7700cf7d732ddbcb517cc855d32e"
+  },
+  {
+    "id": "scottish-adagio",
+    "title": "Scottish Symphony: Adagio",
+    "composer": "Felix Mendelssohn",
+    "performer": "Czech National Symphony Orchestra / Musopen",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Mendelssohn_-_Symphony_No._3_in_A_minor,_Op._56_%27Scottish%27_-_III._Adagio_(Musopen_Symphony).flac",
+    "download": "https://archive.org/download/MusopenCollectionAsFlac/Mendelssohn_ScottishSymphony/FelixMendelssohn-SymphonyNo.3InAMinorscottishOp.56-03-Adagio.ogg",
+    "sourceLicenseText": "=={{int:filedesc}}==\n{{Information\n|description={{en|1=Mendelssohn - Symphony No. 3 in A minor, Op. 56 'Scottish' - III. Adagio}}\nmovements: {{flatlist|\n*[[:File:Mendelssohn - Symphony No. 3 in A minor, Op. 56 'Scottish' - I. Andante con moto - Allegro un poco agitato (Musopen Symphony).flac|I. Andante con moto - Allegro un poco agitato]]\n*[[:File:Mendelssohn - Symphony No. 3 in A minor, Op. 56 'Scottish' - II. Vivace non troppo (Musopen Symphony).flac|II. Vivace non troppo]]\n*[[:File:Mendelssohn - Symphony No. 3 in A minor, Op. 56 'Scottish' - III. Adagio (Musopen Symphony).flac|III. Adagio]]\n*[[:File:Mendelssohn - Symphony No. 3 in A minor, Op. 56 'Scottish' - IV. Allegro vivacissimo - Allegro maestoso assai (Musopen Symphony).flac|IV. Allegro vivacissimo - Allegro maestoso assai]]\n}}\n|date=2012\n|source={{Musopen|https://musopen.org/music/282-symphony-no-3-scottish-op-56/}}\nhttps://archive.org/details/MusopenCollectionAsFlac\n|author=Composer: {{Creator:Felix Mendelssohn Bartholdy}}\nArtists: Musopen Symphony\n|permission=\n|other versions={{fl|The Musopen Symphony Orchestra - Mendelssohn's Symphony No. 3 in A minor, Op. 56, MWV N 18 - III. Adagio.ogg}}\n}}\n\n=={{int:license-header}}==\n{{Copyright information\n|recording={{PD-author|[https://musopen.org/ Musopen]}}\n|musical composition={{PD-old-auto-expired|deathyear=1847}}\n}}\n\n[[Category:Symphony No. 3 (Mendelssohn)]]\n[[Category:Musopen Kickstarter Project]]",
+    "file": "music/scottish-adagio.mp3",
+    "sha256": "e67491449527863e3228d2eb2786cf96d30a310da0c9db023917802499a79130"
+  }
+]

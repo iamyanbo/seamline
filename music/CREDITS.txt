@@ -1,0 +1,59 @@
+FrameShift — recorded soundtrack
+All bundled compositions and the specific recordings below are public domain or CC0.
+CC0: https://creativecommons.org/publicdomain/zero/1.0/
+Original public-domain release: https://creativecommons.org/publicdomain/mark/1.0/
+Full performances converted to MP3, outer silence trimmed, playback loudness normalized.
+
+Gymnopédie No. 1 (Erik Satie, 1888), performed by Robin Alciatore.
+Recording from Musopen (musopen.org), released into the public domain.
+Source: https://commons.wikimedia.org/wiki/File:Erik_Satie_-_gymnopedies_-_la_1_ere._lent_et_douloureux.ogg
+Converted to MP3 with leading and trailing silence trimmed; gain increased 5.2 dB to match the new soundtrack.
+
+
+Morning Mood — Edvard Grieg
+Czech National Symphony Orchestra / Musopen
+Public domain
+https://commons.wikimedia.org/wiki/File:Musopen_-_Morning.ogg
+Local file: music/morning.mp3
+
+Goldberg Variations: Aria — Johann Sebastian Bach
+Shelley Katz / Musopen
+CC0 1.0
+https://commons.wikimedia.org/wiki/File:Bach,_Goldberg_Variations,_Aria_(Musopen_version).ogg
+Local file: music/goldberg.mp3
+
+String Quartet No. 15: Andante — Wolfgang Amadeus Mozart
+Musopen String Quartet
+Public domain
+https://commons.wikimedia.org/wiki/File:Mozart_-_String_Quartet_No._15_in_D_minor,_K421_-_II._Andante_(Musopen_String_Quartet).flac
+Local file: music/mozart-andante.mp3
+
+Symphony No. 1: Andante sostenuto — Johannes Brahms
+Czech National Symphony Orchestra / Musopen
+Public domain
+https://commons.wikimedia.org/wiki/File:Brahms_-_Symphony_No._1_in_C_minor,_Op._68_-_II._Andante_sostenuto_(Musopen_Symphony).flac
+Local file: music/brahms-andante.mp3
+
+In the Steppes of Central Asia — Alexander Borodin
+Musopen Symphony Orchestra
+CC0 1.0
+https://commons.wikimedia.org/wiki/File:Alexander_Borodin_-_In_The_Steppes_Of_Central_Asia.ogg
+Local file: music/steppes.mp3
+
+String Quartet No. 2: Notturno — Alexander Borodin
+Musopen String Quartet
+Public domain
+https://commons.wikimedia.org/wiki/File:Borodin_-_String_Quartet_No._2_in_D_major_-_III._Notturno._Andante_(Musopen_String_Quartet).flac
+Local file: music/notturno.mp3
+
+Peer Gynt: Åse’s Death — Edvard Grieg
+Musopen Symphony Orchestra
+Public domain
+https://commons.wikimedia.org/wiki/File:Grieg_-_Peer_Gynt_Suite_No._1,_Op._46_-_II._The_Death_of_Aase_(Musopen_Symphony).flac
+Local file: music/aase.mp3
+
+Scottish Symphony: Adagio — Felix Mendelssohn
+Czech National Symphony Orchestra / Musopen
+Public domain
+https://commons.wikimedia.org/wiki/File:Mendelssohn_-_Symphony_No._3_in_A_minor,_Op._56_%27Scottish%27_-_III._Adagio_(Musopen_Symphony).flac
+Local file: music/scottish-adagio.mp3

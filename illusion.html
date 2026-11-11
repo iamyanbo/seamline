@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#2b2140"><title>FrameShift Illusions</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath d=%22M2 6V2h4M14 10v4h-4%22 fill=%22none%22 stroke=%22%23ffd36b%22 stroke-width=%222.5%22/%3E%3C/svg%3E"><link rel="stylesheet" href="./illusion.css"></head>
+<body class="at-title">
+  <svg id="grain" aria-hidden="true"><filter id="grain-f"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .3  0 0 0 0 .3  0 0 0 .55 0"/></filter><rect width="100%" height="100%" filter="url(#grain-f)"/></svg>
+  <canvas id="world" aria-label="Floating paths. Paths that line up inside a photo become joined."></canvas>
+  <canvas id="overlay"></canvas>
+  <video id="cam" playsinline muted></video>
+  <div id="flashbulb" aria-hidden="true"></div>
+  <div id="glow" aria-hidden="true"></div>
+
+  <!-- Where you are: a quiet label, top left. -->
+  <header class="corner-label"><span id="chapter">Dawn</span><span class="dot">·</span><span id="level-num">1/8</span><strong id="level-name">Ferryman</strong></header>
+
+  <nav class="mobile-trays" aria-label="Puzzle photos and saves">
+    <button id="photos-toggle" aria-expanded="false" aria-controls="photo-tray"><span class="tray-title"><b>Photos</b><small id="photos-limit">1 photo max</small></span><span id="photos-count">0/1</span><i aria-hidden="true">⌄</i></button>
+    <button id="checkpoints-toggle" aria-expanded="false" aria-controls="checkpoint-tray">Checkpoints <span id="checkpoints-count">0/3</span><i aria-hidden="true">⌄</i></button>
+  </nav>
+  <aside id="checkpoint-tray" class="checkpoint-shelf" aria-label="Saved checkpoints"><span class="shelf-label">Checkpoints <span>1–3 · Restore</span></span><div id="checkpoints"></div></aside>
+  <div id="rewind-status" class="rewind-status" hidden role="status"><span class="rewind-icon" aria-hidden="true">↶</span><span id="rewind-label">Restoring checkpoint</span><button id="rewind-skip" aria-label="Finish restoring now">Skip</button><div id="rewind-progress"></div></div>
+  <!-- Active photos keep puzzle connections; checkpoints restore the entire level state. -->
+  <div id="photo-tray" class="film" aria-label="Active photos"><span class="shelf-label">Active photos</span><div class="photo-capacity"><strong id="photo-limit">1 active photo</strong><span id="frame-count" role="status" aria-live="polite" aria-atomic="true">0/1</span></div><span id="film"></span><p id="photo-inspect-note" class="photo-inspect-note" hidden role="status" aria-live="polite"></p><button id="photo-new" class="photo-new" aria-describedby="photo-rule">＋ Take a photo</button><p id="photo-rule">New photos replace older photos automatically.</p></div>
+
+  <!-- The title card at the start of each level. -->
+  <section id="title-card" class="title-card" hidden aria-live="polite">
+    <p class="title-chapter" id="title-chapter">Dawn</p>
+    <h2 id="title-name">Ferryman</h2>
+    <p id="title-hint"></p><p id="title-subject" class="travel-subject"></p>
+  </section>
+
+  <!-- What is happening now, as a short caption. -->
+  <div id="status" class="caption" role="status"></div>
+  <aside id="connection-key" class="connection-key" hidden aria-label="Connection previews">
+    <span data-kind="held"><i></i>Linked</span><span data-kind="ready"><i></i>Ready</span><span data-kind="waiting"><i></i>After turn</span><span data-kind="blocked"><i></i>Blocked</span>
+  </aside>
+
+  <aside id="coach" class="coach practice" hidden aria-label="Interactive tutorial">
+    <div id="coach-steps" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M3 9V4h5M16 4h5v5M21 15v5h-5M8 20H3v-5"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg>
+    </div>
+    <div class="sr" aria-live="polite" aria-atomic="true"><strong id="coach-title"></strong><span id="coach-text"></span></div>
+    <button id="coach-skip" class="link" title="Skip tutorial" aria-label="Skip tutorial">×</button>
+  </aside>
+
+  <nav class="toolbar" aria-label="Tools">
+    <button id="frame-tool" class="tool" aria-pressed="false" title="Photo tool: drag to take a photo instead of moving around (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="18" height="13" rx="2.5"/><path d="M8.5 6.5l1.4-2.5h4.2l1.4 2.5"/><circle cx="12" cy="13" r="3.6"/></svg><span>Photo</span></button>
+    <button id="hint" class="tool" aria-pressed="false" title="Hint: highlight a useful structure (H)"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="8" cy="15.5" rx="2.6" ry="3.6"/><ellipse cx="15.5" cy="8.5" rx="2.6" ry="3.6"/><path d="M6.6 20.5h2.8M14.1 13.5h2.8"/></svg><span id="hint-label">Hint</span><span class="hint-dots" aria-hidden="true"><i></i><i></i><i></i></span></button>
+    <button id="undo" class="tool" title="Undo the last photo, walk or switch (Z)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7L4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-3"/></svg><span>Undo</span></button>
+    <button id="fit-tool" class="tool" title="Fit puzzle without changing the angle (0)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg><span>Fit</span></button>
+    <button id="album-tool" class="tool" title="Travel album: photographs and places (L)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="11" height="13" rx="1.5" transform="rotate(-8 9 10.5)"/><rect x="9.5" y="6" width="11" height="13" rx="1.5"/><path d="M11.5 15.5l2.5-3 2 2 1.5-1.5 1.5 2.5"/></svg><span>Album</span></button>
+    <button id="menu-toggle" class="tool" aria-expanded="false" aria-controls="menu" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg><span>More</span></button>
+  </nav>
+
+  <section id="menu" class="menu" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="menu-panel">
+      <header class="settings-heading">
+        <div><p class="settings-eyebrow">Your space, your pace</p><h2 id="settings-title">Make yourself comfortable</h2></div>
+        <button id="menu-close" class="settings-close" aria-label="Close settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="settings-content">
+        <div id="settings">
+          <div class="settings-grid">
+            <section class="settings-group" aria-labelledby="sound-heading">
+              <h3 id="sound-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/></svg>Sound</h3>
+              <label class="toggle-setting"><span>Music</span><input type="checkbox" role="switch" id="opt-music"></label>
+              <label class="range-setting" for="opt-music-volume"><span>Music volume <output id="music-volume-value"></output></span><input id="opt-music-volume" type="range" min="0" max="100" step="5"></label>
+              <label class="range-setting" for="opt-effects-volume"><span>Sound effects <output id="effects-volume-value"></output></span><input id="opt-effects-volume" type="range" min="0" max="100" step="5"></label>
+              <div class="settings-recording"><span class="recording-label">Music for this place</span><p id="soundscape-name"></p><a href="./music/CREDITS.txt" target="_blank" rel="noopener">Recording credits <span aria-hidden="true">↗</span></a></div>
+            </section>
+            <section class="settings-group" aria-labelledby="view-heading">
+              <h3 id="view-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><circle cx="12" cy="12" r="3"/></svg>View &amp; movement</h3>
+              <label class="range-setting" for="opt-sensitivity"><span>Camera sensitivity <output id="sensitivity-value"></output></span><input id="opt-sensitivity" type="range" min="40" max="200" step="10"></label>
+              <label class="toggle-setting"><span>Follow the traveller</span><input type="checkbox" role="switch" id="opt-follow"></label>
+              <label class="toggle-setting"><span>Show connection edges</span><input type="checkbox" role="switch" id="opt-hints"></label>
+              <label class="select-setting" for="opt-motion"><span>Motion</span><select id="opt-motion"><option value="system">Device setting</option><option value="reduced">Reduced motion</option><option value="full">Full motion</option></select></label>
+              <label class="select-setting" for="opt-quality"><span>Graphics</span><select id="opt-quality"><option value="high">Full detail</option><option value="low">Low detail</option></select></label>
+              <label class="toggle-setting hands-only"><span>Two L hands take a photo</span><input type="checkbox" role="switch" id="opt-l"></label>
+              <label class="toggle-setting hands-only"><span>Show my hands</span><input type="checkbox" role="switch" id="opt-skeleton"></label>
+              <label class="toggle-setting dev-only"><span>Debug numbers</span><input type="checkbox" role="switch" id="opt-debug"></label>
+            </section>
+          </div>
+          <details class="settings-section settings-backup"><summary><span>Progress backup</span><span class="summary-note">Keep your journey</span></summary>
+            <p class="settings-note">Save your completed levels, photographs and preferences. Importing adds progress without erasing completed levels. Checkpoints stay on this device.</p>
+            <div class="backup-actions"><button id="backup-export">Save backup <span aria-hidden="true">↓</span></button><button id="backup-import">Import backup <span aria-hidden="true">↑</span></button></div>
+            <input id="backup-file" type="file" accept=".json,application/json" hidden>
+            <p id="backup-status" class="settings-note" role="status" aria-live="polite"></p>
+          </details>
+        </div>
+        <section class="play-tools" aria-label="Level tools">
+          <div class="menu-row"><button id="vr-enter" hidden>Enter VR</button><button id="reset">Restart level</button><button id="clear">Clear photos</button><button id="move-tool" aria-pressed="false" title="Drag to slide the view instead of moving around (M)">Slide view</button><button id="view-buttons" aria-expanded="false" aria-controls="view-controls">View buttons</button><button id="coach-again">Replay tutorial</button><button id="story-replay" hidden>Read travel notes</button></div>
+          <details class="settings-section controls-help"><summary>Controls &amp; shortcuts</summary><p class="keys"><kbd>Drag</kbd> look around · <kbd>Shift</kbd>+drag photo · <kbd>Scroll</kbd> zoom · <kbd>0</kbd> fit · <kbd>H</kbd> hint · <kbd>Z</kbd> undo · <kbd>R</kbd> restart · <kbd>L</kbd> album<br>Touch: two fingers zoom and slide. Choose Photo to draw a frame.</p></details>
+        </section>
+      </div>
+      <footer class="settings-footer"><span class="saved-dot" aria-hidden="true"></span>Changes save automatically</footer>
+    </div>
+  </section>
+
+  <!-- On touch screens: buttons to move around and zoom. -->
+  <nav id="view-controls" class="view-controls" hidden aria-label="Move around the world">
+    <button id="view-up" class="round" aria-label="Look from higher">▲</button>
+    <div><button id="view-left" class="round" aria-label="Go round to the left">◀</button><button id="view-home" class="round" aria-label="Reset view">⌂</button><button id="view-right" class="round" aria-label="Go round to the right">▶</button></div>
+    <button id="view-down" class="round" aria-label="Look from lower">▼</button>
+    <div><button id="view-in" class="round" aria-label="Zoom in">＋</button><button id="view-out" class="round" aria-label="Zoom out">－</button></div>
+  </nav>
+  <pre id="debug" class="debug" hidden></pre>
+
+  <!-- The title screen, over the island turning slowly behind it. -->
+  <section id="intro" class="title-screen">
+    <div class="title-top"><h1>FrameShift</h1><p class="tagline">Find a view. Make a crossing. Bring a photograph home.</p></div>
+    <div class="title-bottom">
+      <div class="actions"><button id="start-mouse">Play with mouse / touch</button><button id="start-vr" disabled>Play in VR</button><button id="title-settings" class="link" aria-haspopup="dialog" aria-expanded="false" aria-controls="menu">Settings</button></div>
+      <p id="intro-note" class="note" role="status" aria-live="polite"></p>
+      <p class="credit">A soundtrack of public-domain performances · <a href="./music/CREDITS.txt" target="_blank" rel="noopener">Music credits</a></p>
+    </div>
+  </section>
+
+  <!-- The album: every level as a polaroid, grouped by chapter. Finished ones show the photo you took. -->
+  <section id="album" class="album" hidden aria-label="Album">
+    <header><h2>Album</h2><div class="album-actions"><button id="album-close" class="link">Close</button></div></header>
+    <div id="album-pages"></div>
+  </section>
+
+  <section id="done" class="done" hidden role="dialog" aria-modal="true" aria-labelledby="done-title" aria-describedby="done-text">
+    <div class="completion-card">
+      <div class="completion-photo"><img id="done-photo" alt="A photograph of the completed crossing"></div>
+      <div class="completion-copy"><p id="done-location" class="completion-location"></p><h2 id="done-title">A crossing found.</h2><p id="done-text">Level complete</p></div>
+      <button id="next" class="completion-continue">Continue to next level</button>
+    </div>
+  </section>
+  <aside id="finale-caption" class="finale-caption" hidden aria-live="polite"><p id="finale-line"></p><button id="finale-skip" class="link">Continue</button></aside>
+
+  <dialog id="level-dialogue" class="level-dialogue" aria-labelledby="dialogue-title" aria-describedby="conversation-line">
+    <button id="story-next" aria-label="Continue notes" autofocus></button>
+    <header class="dialogue-location"><p id="dialogue-place"></p><h2 id="dialogue-title"></h2></header>
+    <div class="dialogue-words">
+      <div class="conversation-voice" aria-live="polite" aria-atomic="true"><p id="speaker-name"></p><p id="conversation-line"></p></div>
+      <p class="dialogue-cue" aria-hidden="true"><span id="dialogue-cue-text">tap to continue</span><i></i></p>
+    </div>
+    <button id="dialogue-skip" aria-label="Skip notes" title="Skip notes (Esc)">skip <span aria-hidden="true">›</span></button>
+  </dialog>
+
+  <section id="page" class="page" hidden>
+    <div id="page-photos" class="page-photos"></div>
+    <h2 id="page-chapter">Morning</h2>
+    <p id="page-line"></p>
+    <p class="page-hint">Click to turn the page</p>
+  </section>
+
+  <script src="./illusion-xr-entry.js"></script>
+  <script type="module" src="./illusion.js"></script>
+</body></html>
