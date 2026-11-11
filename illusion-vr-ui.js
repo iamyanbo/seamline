@@ -1,14 +1,35 @@
-// VR interface: plain photographic paper, ink labels and contact-sheet controls.
-// Canvas textures share a consistent visual hierarchy across the shelf and every card.
-const INK='#30352f',INK_SOFT='#686d64',PAPER='#f4f0e7',GOLD='#456577',GOLD_SOFT='#456577',LINE='rgba(57,62,53,.18)';
+// VR interface, in the look of the web settings: warm cream paper, plum ink, soft rounded corners, pill
+// keys with a fine border, toggle switches. Canvas textures share it across the shelf and every card.
+const INK='#2b2140',INK_SOFT='#5d5374',PAPER='#fbf7ee',ACCENT='#645075',ACCENT_SOFT='#ece4f0',LINE='rgba(43,33,64,.13)';
+const GOLD=ACCENT,GOLD_SOFT='#7d6a93';
 const SERIF='"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif';
 const SANS='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
 
 // A single sheet with a narrow edge, rather than a glossy panel or a stack of outlines.
 function card(g,x,y,w,h,r,{fill=PAPER,shadow=.1,lift=2}={}){
-  g.save();g.shadowColor=`rgba(45,42,34,${Math.min(shadow,.12)})`;g.shadowBlur=7;g.shadowOffsetY=Math.min(lift,3);
-  g.fillStyle=fill;g.beginPath();g.roundRect(x,y,w,h,Math.min(r,8));g.fill();
-  g.shadowColor='transparent';g.strokeStyle=LINE;g.lineWidth=1;g.stroke();g.restore();
+  g.save();g.shadowColor=`rgba(43,33,64,${Math.min(shadow,.18)})`;g.shadowBlur=shadow?14:0;g.shadowOffsetY=Math.min(lift,5);
+  g.fillStyle=fill;g.beginPath();g.roundRect(x,y,w,h,r);g.fill();
+  g.shadowColor='transparent';g.strokeStyle=LINE;g.lineWidth=1.5;g.stroke();g.restore();
+}
+// A toggle switch, as on the web: a plum track with the knob to the right when on.
+function toggle(g,cx,cy,on,k=1){
+  const w=66*k,h=38*k,r=h/2;
+  g.fillStyle=on?ACCENT:'#d9d3dc';g.beginPath();g.roundRect(cx-w/2,cy-h/2,w,h,r);g.fill();
+  g.strokeStyle=on?ACCENT:'#c4bdc9';g.lineWidth=1.5;g.stroke();
+  g.save();g.shadowColor='rgba(43,33,64,.25)';g.shadowBlur=4;g.shadowOffsetY=1;
+  g.fillStyle='#fff';g.beginPath();g.arc(on?cx+w/2-r:cx-w/2+r,cy,r-5*k,0,Math.PI*2);g.fill();g.restore();
+}
+// A row of the settings card, as on the web: the setting's name on the left; on the right a switch, or
+// a small chip with its value (pressing steps it). Hovered, the row gets a soft outline.
+export function drawSettingRow(g,w,h,item,hover=false){
+  g.clearRect(0,0,w,h);
+  if(hover){g.fillStyle='#f4eef4';g.strokeStyle=ACCENT;g.lineWidth=3;g.beginPath();g.roundRect(4,4,w-8,h-8,22);g.fill();g.stroke();}
+  g.textAlign='left';g.textBaseline='middle';g.fillStyle=INK;g.font=`500 36px ${SANS}`;g.fillText(item.label,24,h/2+1,w-190);
+  if(item.value!=null){
+    g.font=`600 28px ${SANS}`;const tw=g.measureText(item.value).width+30,x=w-24-tw;
+    g.fillStyle=ACCENT_SOFT;g.beginPath();g.roundRect(x,h/2-21,tw,42,10);g.fill();
+    g.fillStyle=INK_SOFT;g.textAlign='center';g.fillText(item.value,x+tw/2,h/2+1);
+  }else toggle(g,w-24-33,h/2,!!item.on);
 }
 // The panel above the island: a title, one plain line, and a footer that shows either the guide's
 // progress (dots) or the level's photos (taken and available counts).
@@ -86,7 +107,7 @@ export function drawToolbar(g,w,h,margin){
 export function drawTool(g,w,h,item,hover=false){
   g.clearRect(0,0,w,h);
   const on=item.active||item.primary&&!item.disabled;
-  if(hover||on)card(g,6,6,w-12,h-12,20,{fill:on?'#dde7e2':'#e2e6e3',shadow:0,lift:0});
+  if(hover||on)card(g,6,6,w-12,h-12,24,{fill:on?ACCENT_SOFT:'#f1ebf2',shadow:0,lift:0});
   g.globalAlpha=item.disabled?.4:1;
   const s=h*.32/24;
   g.save();g.translate(w/2-12*s,h*.17);g.scale(s,s);g.lineWidth=1.8;g.lineCap=g.lineJoin='round';g.strokeStyle=hover||on?GOLD_SOFT:INK;
@@ -117,12 +138,12 @@ function wrapText(g,text,maxWidth){
 // One level in the album: its picture, number and name, and a gold tick once it is done.
 export function drawLevelTile(g,w,h,{number=1,title='',done=false,current=false,img=null},hover=false){
   g.clearRect(0,0,w,h);
-  const x=8,y=6,kw=w-16,kh=h-16,r=8;
-  card(g,x,y,kw,kh,r,{fill:hover?'#e0e5e3':'#ece8df',shadow:hover?.3:.16,lift:hover?3:4});
+  const x=8,y=6,kw=w-16,kh=h-16,r=20;
+  card(g,x,y,kw,kh,r,{fill:hover?'#fff':'#f6f1e8',shadow:hover?.2:.1,lift:hover?3:2});
   g.lineWidth=hover?6:current?4:2;g.strokeStyle=hover?GOLD:current?INK:LINE;g.beginPath();g.roundRect(x,y,kw,kh,r);g.stroke();
   const pad=14,pw=kw-pad*2,ph=kh*.56;
   g.save();g.beginPath();g.roundRect(x+pad,y+pad,pw,ph,8);g.clip();
-  g.fillStyle=title==='Save here'?'#e4e1d7':'#e9dccd';g.fillRect(x+pad,y+pad,pw,ph);
+  g.fillStyle=title==='Save here'?'#efe8ee':'#e9dccd';g.fillRect(x+pad,y+pad,pw,ph);
   if(title==='Save here'&&!img){
     const cx=x+pad+pw/2,cy=y+pad+ph/2;g.strokeStyle=GOLD;g.lineWidth=2.5;
     g.beginPath();g.arc(cx,cy,23,0,Math.PI*2);g.stroke();g.beginPath();g.moveTo(cx-10,cy);g.lineTo(cx+10,cy);g.moveTo(cx,cy-10);g.lineTo(cx,cy+10);g.stroke();
@@ -147,16 +168,22 @@ export function drawLevelTile(g,w,h,{number=1,title='',done=false,current=false,
 // Every card uses this page, as Settings does: the heading top left, the content in the middle, the keys
 // along the bottom. labels are small section headings, notes a quiet line of text, photos polaroids;
 // their positions are fractions of the page.
-export function drawSheet(g,w,h,{kicker='',title='',subtitle='',labels=[],notes=[],photos=[],sky=null}){
+export function drawSheet(g,w,h,{kicker='',title='',subtitle='',labels=[],notes=[],photos=[],sky=null,columns=false}){
   g.clearRect(0,0,w,h);
-  card(g,24,20,w-48,h-48,34);
+  card(g,24,20,w-48,h-48,44,{shadow:.16,lift:5});
 
+  const spaced=px=>{if('letterSpacing' in g)g.letterSpacing=px;};
   g.textAlign='left';g.textBaseline='alphabetic';
-  g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText(kicker.toUpperCase(),72,82,w-144);
-  g.fillStyle=INK;g.font=`600 52px ${SERIF}`;g.fillText(title,72,144,w-144);
-  if(subtitle){g.fillStyle=INK_SOFT;g.font=`italic 30px ${SERIF}`;g.fillText(subtitle,72,192,w-144);}
-  rule(g,w/2,subtitle?220:180,w/2-72);
-  for(const {text,y} of labels){g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText(text.toUpperCase(),72,y*h,w-144);}
+  g.fillStyle=INK_SOFT;g.font=`600 22px ${SANS}`;spaced('4px');g.fillText(kicker.toUpperCase(),72,84,w-220);spaced('0px');
+  g.fillStyle=INK;g.font=`500 58px ${SERIF}`;g.fillText(title,72,150,w-220);
+  if(subtitle){g.fillStyle=INK_SOFT;g.font=`italic 30px ${SERIF}`;g.fillText(subtitle,72,196,w-220);}
+  const ry=subtitle?222:186;g.strokeStyle=LINE;g.lineWidth=2;g.beginPath();g.moveTo(25,ry);g.lineTo(w-25,ry);g.stroke();
+  if(columns){g.beginPath();g.moveTo(w/2,ry+36);g.lineTo(w/2,h-70);g.stroke();}
+  for(const {text,y,x=null,strong=false} of labels){
+    const lx=x==null?72:x*w;
+    if(strong){g.fillStyle=INK;g.font=`600 38px ${SANS}`;g.fillText(text,lx,y*h,w-144);continue;}
+    g.fillStyle=INK_SOFT;g.font=`600 22px ${SANS}`;spaced('3px');g.fillText(text.toUpperCase(),lx,y*h,w-144);spaced('0px');
+  }
   g.textAlign='center';
   for(const {text,y} of notes){g.fillStyle=INK_SOFT;g.font=`italic 30px ${SERIF}`;g.fillText(text,w/2,y*h,w-144);}
   for(const p of photos)photoCard(g,p.img,p.x*w,p.y*h,p.size*w,p.turn??0,sky);
@@ -164,8 +191,8 @@ export function drawSheet(g,w,h,{kicker='',title='',subtitle='',labels=[],notes=
 // One photo on the photos card: the picture, its number, and what it keeps.
 export function drawPhotoTile(g,w,h,{number=1,img=null,text='',sky=null}){
   g.clearRect(0,0,w,h);
-  card(g,8,6,w-16,h-16,16,{fill:'#ece8df',shadow:.12,lift:3});
-  g.strokeStyle=LINE;g.lineWidth=2;g.beginPath();g.roundRect(8,6,w-16,h-16,8);g.stroke();
+  card(g,8,6,w-16,h-16,22,{fill:'#f6f1e8',shadow:.1,lift:2});
+  g.strokeStyle=LINE;g.lineWidth=2;g.beginPath();g.roundRect(8,6,w-16,h-16,22);g.stroke();
   const pad=18,pw=w-16-pad*2,ph=pw*.62;
   g.save();g.beginPath();g.roundRect(8+pad,6+pad,pw,ph,8);g.clip();g.fillStyle=sky??'#e9dccd';g.fillRect(8+pad,6+pad,pw,ph);
   if(img?.complete&&img.naturalWidth){const k=Math.max(pw/img.naturalWidth,ph/img.naturalHeight),iw=img.naturalWidth*k,ih=img.naturalHeight*k;g.drawImage(img,8+pad+(pw-iw)/2,6+pad+(ph-ih)/2,iw,ih);}
@@ -185,16 +212,26 @@ export function drawFrameLabel(g,w,h,{label='',extra='',ready=false}){
   g.fillStyle=ready?'#456d58':INK;g.fillText(label,w/2,4+32,width-24);
   if(extra){g.fillStyle=INK_SOFT;g.fillText(extra,w/2,4+78,width-24);}
 }
+// A key, as the web buttons: cream with a fine border and rounded ends; the one thing to do next is plum
+// ink with cream text. Hovered (what a pinch or a fingertip would press), it gets a plum outline. A round
+// key is the close button in a card's corner. A key that switches something on shows a switch.
 export function drawButton(g,w,h,item,hover=false){
   g.clearRect(0,0,w,h);
+  if(item.round){
+    const r=Math.min(w,h)/2-6;
+    g.fillStyle=hover?'#fff':PAPER;g.beginPath();g.arc(w/2,h/2,r,0,Math.PI*2);g.fill();
+    g.strokeStyle=hover?ACCENT:LINE;g.lineWidth=hover?4:2.5;g.stroke();
+    g.strokeStyle=INK;g.lineWidth=Math.max(3,r*.07);g.lineCap='round';const k=r*.3;
+    g.beginPath();g.moveTo(w/2-k,h/2-k);g.lineTo(w/2+k,h/2+k);g.moveTo(w/2+k,h/2-k);g.lineTo(w/2-k,h/2+k);g.stroke();return;
+  }
   const primary=item.primary&&!item.disabled,active=item.active&&!item.disabled;
-  const fill=primary?GOLD:active?'#dce6df':hover?'#e0e5e3':'#eeeae1';
-  card(g,10,8,w-20,h-24,20,{fill,shadow:0,lift:0});
-  if(hover){g.strokeStyle=GOLD;g.lineWidth=3;g.beginPath();g.roundRect(10,8,w-20,h-24,8);g.stroke();}
-  const color=item.disabled?'#8b8e85':primary?PAPER:INK,icon=ICONS[item.label];
-  g.font=`500 42px ${SANS}`;const label=item.label,textWidth=Math.min(g.measureText(label).width,w-(icon?120:60));
-  const iconSpace=icon?48:0,left=w/2-(iconSpace+textWidth)/2,cy=(h-16)/2;
-  if(icon){g.save();g.translate(left+18,cy);g.strokeStyle=g.fillStyle=primary?PAPER:GOLD;g.lineWidth=3;g.lineCap=g.lineJoin='round';icon(g);g.restore();}
-  g.fillStyle=color;g.textAlign='left';g.textBaseline='middle';g.fillText(label,left+iconSpace,cy+1,w-(icon?120:60));
-  if(active){g.fillStyle='#456d58';g.beginPath();g.arc(w-30,cy,5,0,Math.PI*2);g.fill();}
+  const x=8,y=8,bw=w-16,bh=h-16,cy=y+bh/2;
+  g.fillStyle=primary?INK:hover?'#fff':active?ACCENT_SOFT:'#f6f1e8';g.beginPath();g.roundRect(x,y,bw,bh,bh*.32);g.fill();
+  g.strokeStyle=primary?INK:hover?ACCENT:LINE;g.lineWidth=hover?4:2;g.stroke();
+  const color=item.disabled?'#aaa2b3':primary?PAPER:INK,icon=ICONS[item.label];
+  g.font=`600 40px ${SANS}`;const label=item.label,room=w-(icon?120:60)-(item.toggle?90:0),textWidth=Math.min(g.measureText(label).width,room);
+  const iconSpace=icon?48:0,left=item.toggle?40:w/2-(iconSpace+textWidth)/2;
+  if(icon){g.save();g.translate(left+18,cy);g.strokeStyle=g.fillStyle=item.disabled?'#aaa2b3':primary?PAPER:ACCENT;g.lineWidth=3;g.lineCap=g.lineJoin='round';icon(g);g.restore();}
+  g.fillStyle=color;g.textAlign='left';g.textBaseline='middle';g.fillText(label,left+iconSpace,cy+1,room);
+  if(item.toggle)toggle(g,w-40-33,cy,!!item.active,.9);
 }

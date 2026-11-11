@@ -12,7 +12,7 @@ import {ALBUM_PREVIEWS} from './illusion-album-previews.js';
 import {conversationFor,PEOPLE} from './illusion-story.js';
 import {createStoryUI} from './illusion-story-ui.js';
 import {createVRGuide} from './illusion-vr-guide.js';
-import {drawPanel,drawButton,drawTool,drawToolbar,drawLevelTile,drawSheet,drawPhotoTile,drawFrameLabel} from './illusion-vr-ui.js';
+import {drawPanel,drawButton,drawTool,drawToolbar,drawLevelTile,drawSheet,drawSettingRow,drawPhotoTile,drawFrameLabel} from './illusion-vr-ui.js';
 import {createHandModel} from './illusion-vr-hands.js';
 import {LESSON_LEVELS,AUTO_LESSONS,LESSON_CUES,lessonMilestone,lessonFor,drawDemoPointer} from './illusion-tutorial.js';
 import {SEEN,SNAP_WINDOW,reachable,MIN_PITCH,MAX_PITCH,seamsIn,seamEdges,seamWithin,seamLine,sightClear,offLine,bothAlong,angleBetween,dirOf,swungCells,misalignAlong,linesUp,positionsOf,nextPosition,moverBlocks,levelCells,plateOf,riding,pieceOf,solidsOf,tilesIn,stepsIn,stoneHidden,hiddenAlong,actuation} from './illusion-geometry.js';
@@ -32,11 +32,11 @@ import {railMeshes} from './illusion-rails.js';
 Object.assign(THEMES,MORE,LIFT_THEMES);
 const LEVEL_ORDER=campaignOrder(LEVELS);
 const FINALE_LEVELS=chapterFinales(LEVELS,LEVEL_ORDER);
-const settings={twoL:true,skeleton:true,debug:false,hints:true,follow:true,music:true,...comfortSettings()};
+const settings={twoL:true,skeleton:true,debug:false,hints:true,follow:true,music:true,vrEyes:true,...comfortSettings()};
 try{
   const shared=JSON.parse(localStorage.getItem('frameshift-settings')||'{}'),own=JSON.parse(localStorage.getItem('frameshift-illusion')||'{}');
   for(const k of ['twoL','skeleton','debug'])if(typeof shared?.[k]==='boolean')settings[k]=shared[k];
-  for(const k of ['hints','follow','music','vrGuideDone','vrRoom'])if(typeof own?.[k]==='boolean')settings[k]=own[k];
+  for(const k of ['hints','follow','music','vrGuideDone','vrRoom','vrEyes'])if(typeof own?.[k]==='boolean')settings[k]=own[k];
   Object.assign(settings,comfortSettings(own));
 }catch{}
 const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
@@ -226,7 +226,7 @@ const restartLevel=()=>maker?.active?maker.restartTest():extraIndex===null?loadL
 const adjacentLevel=delta=>maker?.active?false:extraIndex===null?loadLevel(LEVEL_ORDER[(LEVEL_ORDER.indexOf(levelIndex)+delta+LEVEL_ORDER.length)%LEVEL_ORDER.length]):loadExtra(extraIndex+delta);
 function loadExtra(){loadLevel(Number.isInteger(progress.at)&&progress.at>=0&&progress.at<LEVELS.length?progress.at:0);}
 function loadLevel(i,data,extra=null){
-  closeCard();
+  closeCard();if(vr.guide?.active)vr.guide.stop();// the guide belongs to the level it was started on
   finale?.dispose();finale=null;finishCelebration=null;$('finale-caption').hidden=true;$('page').hidden=true;
   story.reset();
   cancelCustomHint();
@@ -2221,9 +2221,10 @@ function syncVRButtons(){
   };
   // By the island: a pill under the panel.
   for(const item of context){
-    let hover=false;const tex=textTexture(512,144,(g,w,h)=>drawButton(g,w,h,item,hover)),w=item.small?.09:.14,b=button(item,tex,w,w*144/512);
-    b.userData.setHover=on=>{if(on===hover)return;hover=on;tex.userData.draw();b.scale.setScalar(on?1.06:1);};
-    b.userData.where='island';b.renderOrder=22;b.position.set(item.small?.16:0,ISLAND+(item.small?.055:.07),-.02);vr.dock.add(b);
+    const w=.14,h=.17*144/512;let hover=false;const tex=textTexture(Math.round(144*w/h),144,(g,cw,ch)=>drawButton(g,cw,ch,item,hover)),b=button(item,tex,w,h);
+    b.userData.setHover=on=>{if(on===hover)return;hover=on;tex.userData.draw();};
+    // Pressed with a fingertip like the shelf keys: it needs its resting place and size.
+    b.userData.where='island';b.renderOrder=22;b.position.set(item.small?.2:0,ISLAND+(item.small?.055:.07),-.02);b.userData.rest=b.position.clone();b.userData.size=[w,h];vr.dock.add(b);
   }
   if(custom){
     // The maker's many tools stay by the island.
@@ -2326,36 +2327,36 @@ function cardBack(w,h,draw){
   const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,toneMapped:false,depthTest:false,depthWrite:true,alphaTest:.05}));
   m.renderOrder=30;vcard.group.add(m);return tex;
 }
-// Every card is laid out as Settings is: the same width, the heading top left, the content under it, and
-// the keys along the bottom, two to a row (a wide key, the one thing to do next, gets a row of its own),
-// with Close centred under them. Sizes are in metres.
-const CARD_W=.4,KEY_ROW=.045,KEY_W=.17;
+// Every card is laid out as the web settings are: the same width, the heading top left with a round close
+// button in the corner, the content under it, and the keys along the bottom, two to a row (a wide key,
+// the one thing to do next, gets a row of its own). Sizes are in metres.
+const CARD_W=.4,KEY_ROW=.053,KEY_W=.17;
 const headHeight=subtitle=>subtitle?.09:.08;
 function keyRows(items){const rows=[];for(const it of items){const last=rows.at(-1);if(!it.wide&&last?.length===1&&!last[0].wide)last.push(it);else rows.push([it]);}return rows;}
-const keysHeight=(items,close=true)=>keyRows(items).length*KEY_ROW+(close?.065:.015);
+const keysHeight=items=>keyRows(items).length*KEY_ROW+.02;
 function placeKeys(items,h,close=true){
-  const rows=keyRows(items),base=-h/2+(close?.0875:.0375);
+  const rows=keyRows(items),base=-h/2+.044;
   rows.forEach((row,r)=>{
     const y=base+(rows.length-1-r)*KEY_ROW;
     if(row.length===1)cardPill(row[0],row[0].wide?.35:KEY_W,new V3(0,y,.004));
     else row.forEach((it,i)=>cardPill(it,KEY_W,new V3((i-.5)*.18,y,.004)));
   });
-  if(close)cardPill({label:'Close',act:()=>closeCard()},.12,new V3(0,-h/2+.035,.004));
+  if(close){const d=.036;cardKey({label:'Close',round:true,act:()=>closeCard()},{w:d,h:d,tw:160,th:160,draw:(g,cw,ch,hover)=>drawButton(g,cw,ch,{label:'Close',round:true},hover)},new V3(CARD_W/2-.04,h/2-.036,.004));}
 }
 function buildCard(){
   clearCard();
   const w=CARD_W;
   if(vcard.kind==='done'){
     // As on screen: where it was, the level's name and caption, its photo, and the way on.
-    const keys=[{label:$('next').textContent,primary:true,wide:true,act:()=>{closeCard();nextLevel();}},...(maker?.active?[]:[{label:'Album',act:()=>openCard('album')}]),{label:'Close',act:()=>closeCard()}];
-    const caption=$('done-text').textContent,top=headHeight(caption),size=.09,body=size*1.16+.03,h=top+body+keysHeight(keys,false);
+    const keys=[{label:$('next').textContent,primary:true,wide:true,act:()=>{closeCard();nextLevel();}},...(maker?.active?[]:[{label:'Album',wide:true,act:()=>openCard('album')}])];
+    const caption=$('done-text').textContent,top=headHeight(caption),size=.09,body=size*1.16+.03,h=top+body+keysHeight(keys);
     const tex=cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:$('done-location')?.textContent??'',title:$('done-title').textContent,subtitle:caption,sky:palette.sky[1],
       photos:[{img:vcard.photoSrc?cardImage(vcard.photoSrc,()=>tex.userData.draw()):null,x:.5,y:(top+.015+size/2)/h,size:size/w,turn:-.03}]}));
-    placeKeys(keys,h,false);
+    placeKeys(keys,h);
   }else if(vcard.kind==='place'){
     // Moving on to a new place: its name and how many levels it has, under the last place's photos.
     const p=vcard.place,keys=[{label:'Continue',primary:true,wide:true,act:()=>{closeCard();loadLevel(p.next);}}];
-    const top=headHeight(p.line),size=.072,n=p.shots.length,body=n?size*1.16+.035:0,h=top+body+keysHeight(keys,false),turns=[-.06,.05,-.03,.07];
+    const top=headHeight(p.line),size=.072,n=p.shots.length,body=n?size*1.16+.035:0,h=top+body+keysHeight(keys),turns=[-.06,.05,-.03,.07];
     const tex=cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:'Next place',title:p.title,subtitle:p.line,sky:palette.sky[1],
       photos:p.shots.map((src,i)=>({img:cardImage(src,()=>tex.userData.draw()),x:.5+(i-(n-1)/2)*.085/w,y:(top+.018+size/2)/h,size:size/w,turn:turns[i%4]}))}));
     placeKeys(keys,h,false);
@@ -2388,7 +2389,7 @@ function buildCard(){
       {label:'Album',act:()=>openCard('album')},
       {label:'Settings',act:()=>openCard('settings')},
       ...(islandAway()?[{label:'Put back',act:action(()=>putIslandBack())}]:[]),
-      ...(vr.ar?[{label:'Room',active:!!settings.vrRoom,act:()=>{settings.vrRoom=!settings.vrRoom;persistSettings();buildCard();}}]:[]),
+      ...(vr.ar?[{label:'Room',toggle:true,active:!!settings.vrRoom,act:()=>{settings.vrRoom=!settings.vrRoom;persistSettings();buildCard();}}]:[]),
       ...(levelConversation()?[{label:'Story',act:action(()=>showLevelDialogue())}]:[]),
       {label:'How to play',act:action(()=>vr.guide.start())}
     ];
@@ -2400,25 +2401,33 @@ function buildCard(){
     // connection edges, motion and detail. Each key shows its state; press to change it.
     const pct=v=>Math.round(v*100),step=v=>Math.round(v*5)>=5?0:Math.min(1,Math.round(v*5+1)/5);
     const save=()=>{persistSettings();for(const [key,id] of [['hints','opt-hints'],['follow','opt-follow'],['music','opt-music']])$(id).checked=settings[key];buildCard();};
-    const items=[
-      {label:settings.music?'Music on':'Music off',active:settings.music,act:()=>{settings.music=!settings.music;setMusic(settings.music&&mode!=='intro',PALETTES.indexOf(palette));save();}},
-      {label:`Music volume ${pct(settings.musicVolume)}%`,act:()=>{settings.musicVolume=step(settings.musicVolume);applyComfort();save();}},
-      {label:`Sounds ${pct(settings.effectsVolume)}%`,act:()=>{settings.effectsVolume=step(settings.effectsVolume);applyComfort();save();play('place');}},
-      {label:'Follow the traveller',active:settings.follow,act:()=>{settings.follow=!settings.follow;save();}},
-      {label:'Connection edges',active:settings.hints,act:()=>{settings.hints=!settings.hints;save();}},
-      {label:'Reduced motion',active:reducedMotion(),act:()=>{settings.motion=reducedMotion()?'full':'reduced';applyComfort();save();}},
-      {label:'Low detail',active:settings.quality==='low',act:()=>{settings.quality=settings.quality==='low'?'high':'low';applyComfort();save();}}
+    const columns=[
+      ['Sound',[
+        {label:'Music',on:settings.music,act:()=>{settings.music=!settings.music;setMusic(settings.music&&mode!=='intro',PALETTES.indexOf(palette));save();}},
+        {label:'Music volume',value:`${pct(settings.musicVolume)}%`,act:()=>{settings.musicVolume=step(settings.musicVolume);applyComfort();save();}},
+        {label:'Sound effects',value:`${pct(settings.effectsVolume)}%`,act:()=>{settings.effectsVolume=step(settings.effectsVolume);applyComfort();save();play('place');}}
+      ]],
+      ['View & movement',[
+        {label:'Follow the traveller',on:settings.follow,act:()=>{settings.follow=!settings.follow;save();}},
+        {label:'Connection edges',on:settings.hints,act:()=>{settings.hints=!settings.hints;save();}},
+        {label:'Reduced motion',on:reducedMotion(),act:()=>{settings.motion=reducedMotion()?'full':'reduced';applyComfort();save();}},
+        {label:'Low detail',on:settings.quality==='low',act:()=>{settings.quality=settings.quality==='low'?'high':'low';applyComfort();save();}},
+        {label:'Eyes meet at line-ups',on:settings.vrEyes,act:()=>{settings.vrEyes=!settings.vrEyes;save();}}
+      ]]
     ];
-    const h=headHeight('')+keysHeight(items);
-    cardBack(w,h,(g,cw2,ch2)=>drawSheet(g,cw2,ch2,{kicker:'Preferences',title:'Settings'}));
-    placeKeys(items,h);
+    const RH=.044,RW=.18,top=headHeight('')+.012,first=top+.04,h=first+Math.max(...columns.map(c=>c[1].length))*RH+.022;
+    cardBack(w,h,(g,cw2,ch2)=>drawSheet(g,cw2,ch2,{kicker:'Preferences',title:'Settings',columns:true,
+      labels:columns.map(([name],c)=>({text:name,strong:true,x:c?.5+.06:.06,y:(top+.022)/h}))}));
+    columns.forEach(([,rows],c)=>rows.forEach((item,r)=>cardKey(item,{w:RW,h:RH-.004,tw:600,th:Math.round(600*(RH-.004)/RW),draw:(g,cw2,ch2,hover)=>drawSettingRow(g,cw2,ch2,item,hover)},
+      new V3((c-.5)*.198,h/2-first-RH/2-r*RH,.004))));
+    placeKeys([],h);
   }else if(vcard.kind==='album'){
     // A place at a time: its levels as tiles, then the keys to turn the page.
     const chapters=albumChapters(),k=vcard.chapter=Math.max(0,Math.min(chapters.length-1,vcard.chapter)),c=chapters[k];
     const cols=5,tw=.07,th=.085,stepX=.075,stepY=.092,rows=Math.ceil(c.levels.length/cols),top=headHeight(c.subject)+.008;
     const keys=[{label:'Previous',disabled:k===0,act:()=>{vcard.chapter--;buildCard();}},{label:'Next',disabled:k===chapters.length-1,act:()=>{vcard.chapter++;buildCard();}},
-      {label:'How to play',act:()=>{closeCard();vr.guide.start();}},{label:'Close',act:()=>closeCard()}];
-    const h=top+rows*stepY+.008+keysHeight(keys,false);
+      {label:'How to play',wide:true,act:()=>{closeCard();vr.guide.start();}}];
+    const h=top+rows*stepY+.008+keysHeight(keys);
     cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:`Album · ${k+1} of ${chapters.length}`,title:c.name,subtitle:c.subject}));
     c.levels.forEach((i,n)=>{
       const L=LEVELS[i],preview=ALBUM_PREVIEWS[L.name],src=preview?.revision===levelRevision(L)?preview.src:null;
@@ -2427,7 +2436,7 @@ function buildCard(){
         draw:(g,cw,ch,hover)=>drawLevelTile(g,cw,ch,{number:campaignNumber(LEVEL_ORDER,i),title:levelTitle(L),done:!!progress.done[L.name],current:i===levelIndex,img:src?cardImage(src,()=>b.userData.redraw()):null},hover)},
         new V3((col-(count-1)/2)*stepX,h/2-top-th/2-row*stepY,.004));
     });
-    placeKeys(keys,h,false);
+    placeKeys(keys,h);
   }
 }
 function openCard(kind){
@@ -3175,19 +3184,19 @@ const fpsMeter=new URLSearchParams(location.search).has('fps')?(()=>{
 })():null;
 // A line-up is measured from between your eyes, but in a headset each eye looks from a little to one side,
 // so two edges at different depths never quite meet: each eye sees a small step, and together they read
-// as two paths at two depths. Near a line-up, and at a photo's own view (where the traveller crosses),
-// both eyes ease toward that middle point, as you would close one eye to see such an illusion, and the
+// as two paths at two depths. At a line-up, and at a photo's own view (where the traveller crosses),
+// both eyes move to that middle point, as you would close one eye to see such an illusion, and the
 // edges meet as one path. Away from it the world is back in full depth.
-const EYES_FROM=10,EYES_FULL=VR_SNAP_DEG; // degrees off a line-up: start easing, fully together
+// A slow change reads as the world zooming, which is uncomfortable, so it only happens once you are
+// lined up (or at a photo's view), and quickly, like closing an eye. Settings can turn it off.
+const EYES_PHOTO=2.5,EYES_SPEED=12; // degrees from a photo's view; how fast the eyes meet and part
 function eyesTogether(dt){
-  const near=off=>off==null?0:1-Math.min(1,Math.max(0,(off-EYES_FULL)/(EYES_FROM-EYES_FULL)));
   let want=0;
-  if(!vcard.kind&&!story.open&&!maker?.editing){
-    if(vr.view?.p&&!complete)want=near(aligned.some(p=>p.seam===vr.view.p.seam)?0:vr.view.off);
-    for(const f of frames)if(f.links.length)want=Math.max(want,near(f.off));
+  if(settings.vrEyes&&!vcard.kind&&!story.open&&!maker?.editing){
+    if(vr.view?.p&&!complete&&aligned.some(p=>p.seam===vr.view.p.seam))want=1;
+    for(const f of frames)if(f.links.length&&f.off!=null&&f.off<=EYES_PHOTO)want=1;
   }
-  want=want*want*(3-2*want);
-  vr.eyes=(vr.eyes??0)+(want-(vr.eyes??0))*Math.min(1,dt*4);
+  vr.eyes=(vr.eyes??0)+(want-(vr.eyes??0))*Math.min(1,dt*EYES_SPEED);
   const cams=renderer.xr.getCamera().cameras;if(cams.length<2||vr.eyes<.001)return;
   const mid=new V3();for(const c of cams)mid.add(new V3().setFromMatrixPosition(c.matrixWorld));mid.multiplyScalar(1/cams.length);
   for(const c of cams){
