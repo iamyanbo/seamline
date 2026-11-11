@@ -11,7 +11,6 @@ import {previewSegments,drawPreviewEdges} from './illusion-previews.js';
 import {ALBUM_PREVIEWS} from './illusion-album-previews.js';
 import {conversationFor,PEOPLE} from './illusion-story.js';
 import {createStoryUI} from './illusion-story-ui.js';
-import {CHAPTER_SUBJECTS} from './illusion-chapters.js';
 import {createVRGuide} from './illusion-vr-guide.js';
 import {drawPanel,drawButton,drawTool,drawToolbar,drawFinishCard,drawAlbumCard,drawLevelTile,drawSheet,drawPhotoTile,drawPlaceCard,drawFrameLabel} from './illusion-vr-ui.js';
 import {createHandModel} from './illusion-vr-hands.js';
@@ -269,7 +268,7 @@ function loadLevel(i,data,extra=null){
   // Brief chapter and level title, then it fades.
   const inChapter=LEVEL_ORDER.slice(0,campaignNumber(LEVEL_ORDER,levelIndex)).filter(i=>LEVELS[i].palette===L.palette).length;
   $('title-chapter').textContent=extraIndex!==null?`${chapter} · Extra ${extraIndex+1}`:`${chapter} · ${inChapter}`;$('title-name').textContent=levelTitle(L);$('title-hint').textContent=`${L.frames} active photo${L.frames===1?'':'s'}`;
-  if($('title-subject'))$('title-subject').textContent=maker?.active?'':CHAPTER_SUBJECTS[L.palette??levelIndex]??'';
+  if($('title-subject'))$('title-subject').textContent='';
   const card=$('title-card');card.hidden=true;void card.offsetWidth;card.hidden=mode==='intro';lastHud='';
   $('story-replay').hidden=!levelConversation();
   if(mode!=='intro')showLevelDialogue();
@@ -1202,6 +1201,9 @@ const wrapAngle=a=>a-Math.round(a/(2*Math.PI))*2*Math.PI;
 // The heading (about the surface's up) of walking from one point to another.
 function faceAlong(to,from,up){const d=to.clone().sub(from).applyQuaternion(tiltOf(up).invert());return Math.hypot(d.x,d.z)<1e-6?walker.face:Math.atan2(d.x,d.z);}
 let winAt=-9;
+// Plain words for the cards: how many levels a place has, and the line when a place is finished.
+function countLevels(place){const n=LEVEL_ORDER.filter(j=>(LEVELS[j].palette??j)%CHAPTERS.length===place%CHAPTERS.length).length;return `${n} level${n===1?'':'s'}`;}
+function placeDone(){const name=CHAPTERS[(level.palette??levelIndex)%CHAPTERS.length];return `You finished ${name.replace(/^The /,'the ')}.`;}
 function win(){
   const epoch=++winEpoch;
   if(LESSON_LEVELS.has(level.name)||practice.force===level.name){
@@ -1214,7 +1216,7 @@ function win(){
   const reveal=level.composition?.reveal;
   if(reveal&&!vr.on&&!reducedMotion())showReveal(reveal);
   if(finale){
-    finale.start(reducedMotion());$('finale-line').textContent=finale.caption;$('finale-caption').hidden=reducedMotion();
+    finale.start(reducedMotion());$('finale-line').textContent=placeDone();$('finale-caption').hidden=reducedMotion();
     if(!reveal&&!vr.on&&!reducedMotion()){
       const view=openingView();yawT=yaw+wrapAngle(view.yaw*DEG-yaw);pitchT=view.pitch*DEG;
       const fit=fitView([...framingPoints(false),...finale.framingPoints()],yawT,pitchT,W,H,fitInsets());targetT.fromArray(fit.target);zoomT=fit.zoom;
@@ -1225,7 +1227,7 @@ function win(){
   const last=extraIndex!==null?extraIndex===EXTRA_LEVELS.length-1:levelIndex===LEVEL_ORDER.at(-1);
   $('done-title').textContent=levelTitle(level);
   if($('done-location'))$('done-location').textContent=maker?.active?'Your creation':`${$('chapter').textContent} · ${$('level-num').textContent}`;
-  $('done-text').textContent=last?(extraIndex!==null?'Extra levels complete':'All levels complete'):finale?finale.caption:'Level complete';
+  $('done-text').textContent=last?(extraIndex!==null?'Extra levels complete':'All levels complete'):finale?placeDone():'Level complete';
   $('next').textContent=last?(extraIndex!==null?'Return to the album':'Begin again'):'Continue to next level';
   if(maker?.active){$('done-text').textContent='Playtest complete';$('next').textContent='Back to build';}
   // A keepsake: the moment the traveller got home, as a polaroid, kept in the album.
@@ -1316,7 +1318,7 @@ function openAlbum(){
     const L=LEVELS[i],name=CHAPTERS[(L.palette??i)%CHAPTERS.length];
     if(name!==chapter){
       chapter=name;const heading=document.createElement('h3');heading.textContent=name;
-      const subject=document.createElement('p');subject.className='album-subject';subject.textContent=CHAPTER_SUBJECTS[L.palette??i]??'';
+      const subject=document.createElement('p');subject.className='album-subject';subject.textContent=countLevels(L.palette??i);
       row=document.createElement('div');row.className='album-row';pages.append(heading,subject,row);
     }
     const current=i===levelIndex&&mode!=='intro',b=document.createElement('button'),pic=document.createElement('div'),cap=document.createElement('span'),meta=document.createElement('span');
@@ -2296,7 +2298,7 @@ function albumChapters(){
   const out=[];
   for(const i of LEVEL_ORDER){
     const L=LEVELS[i],name=CHAPTERS[(L.palette??i)%CHAPTERS.length];
-    if(out.at(-1)?.name!==name)out.push({name,subject:CHAPTER_SUBJECTS[L.palette??i]??'',levels:[]});
+    if(out.at(-1)?.name!==name)out.push({name,subject:countLevels(L.palette??i),levels:[]});
     out.at(-1).levels.push(i);
   }
   return out;
@@ -2365,7 +2367,7 @@ function buildCard(){
       {label:'How to play',act:action(()=>vr.guide.start())}
     ];
     const w=.36,rows=Math.ceil(items.length/2),h=.08+rows*.045+.065;
-    cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:'FrameShift',title:'Menu'}));
+    cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:'Seamline',title:'Menu'}));
     items.forEach((item,i)=>cardPill(item,.15,new V3((i%2-.5)*.16,h/2-.08-.0225-Math.floor(i/2)*.045,.004)));
     cardPill({label:'Close',act:()=>closeCard()},.12,new V3(0,-h/2+.035,.004));
   }else if(vcard.kind==='settings'){
@@ -3035,7 +3037,7 @@ $('backup-import').addEventListener('click',()=>$('backup-file').click());
 $('backup-file').addEventListener('change',async()=>{
   const file=$('backup-file').files[0];if(!file)return;
   try{
-    if(file.size>24*1024*1024)throw Error('Choose a FrameShift backup smaller than 24 MB.');
+    if(file.size>24*1024*1024)throw Error('Choose a Seamline backup smaller than 24 MB.');
     const incoming=readProgressBackup(await file.text(),LEVELS),done={...progress.done};
     for(const [name,value] of Object.entries(incoming.done))if(!done[name]||done[name]===1)done[name]=value;
     const next={...progress,done,at:incoming.at},preferences={...settings,...incoming.preferences},lessons=new Set([...lessonSeen,...incoming.lessons]);
@@ -3210,9 +3212,9 @@ function nextLevel(){
   progress.at=i;saveProgress();
   const was=chapterIndex(levelIndex),now=chapterIndex(i);
   const shots=LEVEL_ORDER.filter(k=>chapterIndex(k)===was).map(k=>photoOf(LEVELS[k].name)).filter(Boolean).slice(-4);
-  if(vr.on){$('done').hidden=true;vcard.place={next:i,title:CHAPTERS[now],line:`${CHAPTER_SUBJECTS[now]} \u00b7 ${LEVELS.filter(L=>L.palette===now).length} places to explore`,shots};openCard('place');return;}
+  if(vr.on){$('done').hidden=true;vcard.place={next:i,title:CHAPTERS[now],line:countLevels(now),shots};openCard('place');return;}
   $('page-photos').innerHTML=shots.map((src,k)=>`<img src="${src}" alt="" style="--r:${[-6,4,-2,7][k]}deg;--d:${k*.12}s">`).join('');
-  $('page-chapter').textContent=CHAPTERS[now];$('page-line').textContent=`${CHAPTER_SUBJECTS[now]} \u00b7 ${LEVELS.filter(L=>L.palette===now).length} places to explore`;
+  $('page-chapter').textContent=CHAPTERS[now];$('page-line').textContent=countLevels(now);
   $('done').hidden=true;const page=$('page');page.hidden=false;page.dataset.next=i;
   setTimeout(()=>{if(!page.hidden)play('place');},300);
 }

@@ -1,26 +1,26 @@
 import * as THREE from './vendor/three.module.js';
 
 const FINALES=[
-  ['lanterns','The courtyard comes to light.',0xffc879],
-  ['garden','The garden opens to the evening.',0xf3bbcf],
-  ['canopy','The sun gate unfolds.',0xe8b65e],
-  ['lanterns','Lights rise above the lagoon.',0xffcd8b],
-  ['stars','A constellation finds its shape.',0xbcdfff],
-  ['lanterns','Every window welcomes you home.',0xffce87],
-  ['lanterns','The harbour lights guide the way home.',0xffd28a],
-  ['canopy','The terrace opens toward the sea.',0xf2d8a0],
-  ['lanterns','The last lantern joins the festival.',0xffb75f],
-  ['stars','A crown of light above the ice.',0x9de8ed],
-  ['lanterns','Warm lights across the snow.',0xffd392],
-  ['garden','The night garden blooms.',0xb4eab0],
-  ['canopy','The sky pavilion opens.',0xf5d59b],
-  ['stars','A new constellation marks the journey.',0xc0d9ff]
+  ['lanterns',0xffc879],
+  ['garden',0xf3bbcf],
+  ['canopy',0xe8b65e],
+  ['lanterns',0xffcd8b],
+  ['stars',0xbcdfff],
+  ['lanterns',0xffce87],
+  ['lanterns',0xffd28a],
+  ['canopy',0xf2d8a0],
+  ['lanterns',0xffb75f],
+  ['stars',0x9de8ed],
+  ['lanterns',0xffd392],
+  ['garden',0xb4eab0],
+  ['canopy',0xf5d59b],
+  ['stars',0xc0d9ff]
 ];
 export const chapterFinales=(levels,order)=>new Set(order.filter((i,k)=>k===order.length-1||levels[order[k+1]].palette!==levels[i].palette));
 
 // Completion scenery lives outside the puzzle's picking and geometry groups.
 export function createFinale(parent,{chapter,goal,box,kit,texture,yaw=0}){
-  const [kind,caption,color]=FINALES[chapter]??FINALES[5],group=new THREE.Group();group.name='chapter-finale';group.visible=false;parent.add(group);
+  const [kind,color]=FINALES[chapter]??FINALES[5],group=new THREE.Group();group.name='chapter-finale';group.visible=false;parent.add(group);
   const geometries=new Set(),materials=new Set(),lamps=[],parts=[],windows=[];
   const geo=g=>(geometries.add(g),g),mat=m=>(materials.add(m),m);
   const glow=mat(new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:1.1,roughness:.7}));
@@ -88,7 +88,7 @@ export function createFinale(parent,{chapter,goal,box,kit,texture,yaw=0}){
       if(part.lineMat)part.lineMat.opacity=Math.max(0,(progress-.25)/.75)*.65;
     }
   }
-  return {caption,kind,start(reduced=false){if(started)return;started=true;group.visible=true;lit=lightWindows();update(0,reduced);},update,reset,
+  return {kind,start(reduced=false){if(started)return;started=true;group.visible=true;lit=lightWindows();update(0,reduced);},update,reset,
     framingPoints:()=>[-2.2,2.2].flatMap(x=>[-2.2,2.2].map(z=>[at.x+x,at.y+(kind==='stars'?4.6:2.4),at.z+z])),
     state:()=>({kind,started,settled:time>=4,windows:windows.length,parts:lamps.length+parts.length}),
     dispose(){reset();group.removeFromParent();for(const m of materials)m.dispose();for(const g of geometries)g.dispose();}

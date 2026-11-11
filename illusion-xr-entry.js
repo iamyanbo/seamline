@@ -7,7 +7,8 @@
     start.hidden=!available;start.disabled=!entry.ready||!entry.checked||!entry.vr;
     start.setAttribute('aria-busy',String(available&&start.disabled));
     if(inside){inside.hidden=!entry.vr;inside.disabled=!entry.ready;}
-    document.getElementById('intro-note').textContent=!available?'':!entry.checked?'Checking headset support...':!entry.ready?'Preparing your journey...':'';
+    // Without a headset the VR button stays hidden; say where to find it.
+    document.getElementById('intro-note').textContent=!available?'To play in VR, open this page in the Meta Quest browser.':!entry.checked?'Checking headset support...':!entry.ready?'Preparing your journey...':'';
   };
   const supported=mode=>navigator.xr?Promise.resolve().then(()=>navigator.xr.isSessionSupported(mode)).catch(()=>false):Promise.resolve(false);
   // AR discovery must not delay the VR entry button.

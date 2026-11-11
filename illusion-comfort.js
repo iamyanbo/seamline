@@ -10,9 +10,9 @@ export function comfortSettings(value={}){
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const image=v=>typeof v==='string'&&v.length<=700000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v);
 export function readProgressBackup(raw,levels){
-  if(typeof raw!=='string'||raw.length>24*1024*1024)throw Error('Choose a FrameShift backup smaller than 24 MB.');
-  let data;try{data=JSON.parse(raw);}catch{throw Error('This file is not a readable FrameShift backup.');}
-  if(data?.format!=='frameshift-progress'||data.version!==1||!record(data.progress)||!record(data.progress.done))throw Error('This is not a supported FrameShift progress backup.');
+  if(typeof raw!=='string'||raw.length>24*1024*1024)throw Error('Choose a Seamline backup smaller than 24 MB.');
+  let data;try{data=JSON.parse(raw);}catch{throw Error('This file is not a readable Seamline backup.');}
+  if(data?.format!=='frameshift-progress'||data.version!==1||!record(data.progress)||!record(data.progress.done))throw Error('This is not a supported Seamline progress backup.');
   const names=new Set(levels.map(L=>L.name)),done={};
   for(const [name,value] of Object.entries(data.progress.done)){
     if(!names.has(name))continue;
@@ -20,7 +20,7 @@ export function readProgressBackup(raw,levels){
     done[name]=value;
   }
   const at=levels.findIndex(L=>L.name===data.progress.current);
-  if(at<0)throw Error('The saved level is not available in this version of FrameShift.');
+  if(at<0)throw Error('The saved level is not available in this version of Seamline.');
   if(data.lessons!==undefined&&(!Array.isArray(data.lessons)||data.lessons.length>200||data.lessons.some(n=>typeof n!=='string')))throw Error('The saved tutorial progress is damaged.');
   const preferences=comfortSettings(data.preferences);
   for(const key of ['hints','follow','music'])if(typeof data.preferences?.[key]==='boolean')preferences[key]=data.preferences[key];
