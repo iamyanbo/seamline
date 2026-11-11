@@ -12,7 +12,7 @@ import {ALBUM_PREVIEWS} from './illusion-album-previews.js';
 import {conversationFor,PEOPLE} from './illusion-story.js';
 import {createStoryUI} from './illusion-story-ui.js';
 import {createVRGuide} from './illusion-vr-guide.js';
-import {drawPanel,drawButton,drawTool,drawToolbar,drawFinishCard,drawAlbumCard,drawLevelTile,drawSheet,drawPhotoTile,drawPlaceCard,drawFrameLabel} from './illusion-vr-ui.js';
+import {drawPanel,drawButton,drawTool,drawToolbar,drawLevelTile,drawSheet,drawPhotoTile,drawFrameLabel} from './illusion-vr-ui.js';
 import {createHandModel} from './illusion-vr-hands.js';
 import {LESSON_LEVELS,AUTO_LESSONS,LESSON_CUES,lessonMilestone,lessonFor,drawDemoPointer} from './illusion-tutorial.js';
 import {SEEN,SNAP_WINDOW,reachable,MIN_PITCH,MAX_PITCH,seamsIn,seamEdges,seamWithin,seamLine,sightClear,offLine,bothAlong,angleBetween,dirOf,swungCells,misalignAlong,linesUp,positionsOf,nextPosition,moverBlocks,levelCells,plateOf,riding,pieceOf,solidsOf,tilesIn,stepsIn,stoneHidden,hiddenAlong,actuation} from './illusion-geometry.js';
@@ -630,7 +630,7 @@ function animateJoins(){
     f.group.visible=vr.on;
     // From its own direction a photo fades away, so you see the live world through it exactly where it
     // lines up; from elsewhere it is a floating print. It develops (the haze clears) once it comes true.
-    const off=angleBetween(viewDir(f.cam),viewDir(camera)),seen=Math.min(1,Math.max(0,(off-2)/18));
+    const off=angleBetween(viewDir(f.cam),viewDir(camera)),seen=Math.min(1,Math.max(0,(off-2)/18));f.off=off;
     const developed=f.flashAt>0?Math.min(1,(elapsed-f.flashAt)/1.4):0;
     const life=level.fade?Math.min(1,Math.max(0,(level.fade-(elapsed-f.born))/(level.fade*.4))):1;
     const v=viewDir(camera),n=viewDir(f.cam),facing=Math.abs(v[0]*n[0]+v[1]*n[1]+v[2]*n[2]),edgeOn=Math.min(1,Math.max(0,(facing-.18)/.25));
@@ -2012,7 +2012,7 @@ const HOLD_SIZE=.22,HOLD_LIFT=.16,HOLD_CHARGE=.9,HOLD_SHOW=.2;
 const vr={on:false,turn:0,hands:[],controllers:[],rig:new THREE.Group(),cam:new THREE.PerspectiveCamera(60,1,.02,100),fog:null,
   anchor:{pos:TABLE.clone(),quat:new THREE.Quaternion(),size:ISLAND},goal:{pos:TABLE.clone(),quat:new THREE.Quaternion(),size:ISLAND},
   hold:{state:'idle',charge:0,lost:0,closing:0,yaw:0,last:null,speed:0,mute:false,ring:null,spin:null,spun:0},align:null,rt:null,quad:null,outline:null,hover:null,panel:null,panelText:'',dock:new THREE.Group(),tray:new THREE.Group(),buttons:[],skyFor:null,sky:null};
-renderer.xr.enabled=true;
+renderer.xr.enabled=true;renderer.xr.cameraAutoUpdate=false;// the loop updates the eye cameras itself (see eyesTogether)
 // Things in the room (hands, panel, buttons, sky) hang off a rig that cancels the island's placement.
 vr.rig.matrixAutoUpdate=false;vr.rig.visible=false;scene.add(vr.rig);vr.rig.add(vr.dock,vr.tray);
 for(let i=0;i<2;i++){
@@ -2319,41 +2319,67 @@ function cardKey(item,{w,h,tw,th,draw},at){
     setHover:on=>{if(on===hover)return;hover=on;tex.userData.draw();}};
   b.position.copy(at);b.renderOrder=31;vcard.group.add(b);vcard.buttons.push(b);return b;
 }
-const cardPill=(item,w,at)=>cardKey(item,{w,h:w*144/512,tw:512,th:144,draw:(g,cw,ch,hover)=>drawButton(g,cw,ch,item,hover)},at);
+// Keys keep one height (that of a Settings key) however wide they are, so a wide key is longer, not taller.
+const cardPill=(item,w,at)=>{const h=.17*144/512;return cardKey(item,{w,h,tw:Math.round(144*w/h),th:144,draw:(g,cw,ch,hover)=>drawButton(g,cw,ch,item,hover)},at);};
 function cardBack(w,h,draw){
   const tw=1200,tex=textTexture(tw,Math.round(tw*h/w),draw);
   const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,toneMapped:false,depthTest:false,depthWrite:true,alphaTest:.05}));
   m.renderOrder=30;vcard.group.add(m);return tex;
 }
+// Every card is laid out as Settings is: the same width, the heading top left, the content under it, and
+// the keys along the bottom, two to a row (a wide key, the one thing to do next, gets a row of its own),
+// with Close centred under them. Sizes are in metres.
+const CARD_W=.4,KEY_ROW=.045,KEY_W=.17;
+const headHeight=subtitle=>subtitle?.09:.08;
+function keyRows(items){const rows=[];for(const it of items){const last=rows.at(-1);if(!it.wide&&last?.length===1&&!last[0].wide)last.push(it);else rows.push([it]);}return rows;}
+const keysHeight=(items,close=true)=>keyRows(items).length*KEY_ROW+(close?.065:.015);
+function placeKeys(items,h,close=true){
+  const rows=keyRows(items),base=-h/2+(close?.0875:.0375);
+  rows.forEach((row,r)=>{
+    const y=base+(rows.length-1-r)*KEY_ROW;
+    if(row.length===1)cardPill(row[0],row[0].wide?.35:KEY_W,new V3(0,y,.004));
+    else row.forEach((it,i)=>cardPill(it,KEY_W,new V3((i-.5)*.18,y,.004)));
+  });
+  if(close)cardPill({label:'Close',act:()=>closeCard()},.12,new V3(0,-h/2+.035,.004));
+}
 function buildCard(){
   clearCard();
+  const w=CARD_W;
   if(vcard.kind==='done'){
-    const w=.34,h=.2;
-    const tex=cardBack(w,h,(g,cw,ch)=>drawFinishCard(g,cw,ch,{location:$('done-location')?.textContent??'',title:$('done-title').textContent,caption:$('done-text').textContent,
-      photo:vcard.photoSrc?cardImage(vcard.photoSrc,()=>tex.userData.draw()):null,sky:palette.sky[1]}));
-    const y=-h/2-.03;
-    cardPill({label:$('next').textContent,primary:true,act:()=>{closeCard();nextLevel();}},.16,new V3(0,y,.004));
-    if(!maker?.active)cardPill({label:'Album',act:()=>openCard('album')},.08,new V3(-.13,y,.004));
-    cardPill({label:'Close',act:()=>closeCard()},.08,new V3(.13,y,.004));
+    // As on screen: where it was, the level's name and caption, its photo, and the way on.
+    const keys=[{label:$('next').textContent,primary:true,wide:true,act:()=>{closeCard();nextLevel();}},...(maker?.active?[]:[{label:'Album',act:()=>openCard('album')}]),{label:'Close',act:()=>closeCard()}];
+    const caption=$('done-text').textContent,top=headHeight(caption),size=.09,body=size*1.16+.03,h=top+body+keysHeight(keys,false);
+    const tex=cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:$('done-location')?.textContent??'',title:$('done-title').textContent,subtitle:caption,sky:palette.sky[1],
+      photos:[{img:vcard.photoSrc?cardImage(vcard.photoSrc,()=>tex.userData.draw()):null,x:.5,y:(top+.015+size/2)/h,size:size/w,turn:-.03}]}));
+    placeKeys(keys,h,false);
+  }else if(vcard.kind==='place'){
+    // Moving on to a new place: its name and how many levels it has, under the last place's photos.
+    const p=vcard.place,keys=[{label:'Continue',primary:true,wide:true,act:()=>{closeCard();loadLevel(p.next);}}];
+    const top=headHeight(p.line),size=.072,n=p.shots.length,body=n?size*1.16+.035:0,h=top+body+keysHeight(keys,false),turns=[-.06,.05,-.03,.07];
+    const tex=cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:'Next place',title:p.title,subtitle:p.line,sky:palette.sky[1],
+      photos:p.shots.map((src,i)=>({img:cardImage(src,()=>tex.userData.draw()),x:.5+(i-(n-1)/2)*.085/w,y:(top+.018+size/2)/h,size:size/w,turn:turns[i%4]}))}));
+    placeKeys(keys,h,false);
   }else if(vcard.kind==='photos'){
     // Your photos, as the tray on screen: each one, what it keeps, and a key to drop it. Below them the
     // three checkpoints: save where you are, and go back to one later.
-    const n=frames.length,w=.44,tw=.1,th=n?.13:.045,cw=.095,ch=.09,top=.088,h=top+th+.045+.03+ch+.045+.03;
-    cardBack(w,h,(g,cw2,ch2)=>drawSheet(g,cw2,ch2,{kicker:`Photos · ${n} of ${level.frames}`,title:'Your photos',labels:[...(n?[]:[{text:'No photos yet',y:(top+th/2)/h}]),{text:'Checkpoints',y:(top+th+.045+.022)/h}]}));
+    const n=frames.length,tw=.12,th=.14,cw=.11,ch=.1,any=checkpointSlots.some(Boolean),top=headHeight('');
+    const photoY=top+.012,labelY=photoY+(n?th+.05:.045),slotY=labelY+.018,h=slotY+ch+(any?.046:.012)+keysHeight([]);
+    cardBack(w,h,(g,cw2,ch2)=>drawSheet(g,cw2,ch2,{kicker:`Photos · ${n} of ${level.frames}`,title:'Your photos',
+      notes:n?[]:[{text:'No photos yet. Frame a line-up with both hands to take one.',y:(photoY+.022)/h}],labels:[{text:'Checkpoints',y:labelY/h}]}));
     frames.forEach((f,i)=>{
-      const x=(i-(n-1)/2)*(tw+.008),y=h/2-top-th/2,details={index:i,action:'keep',frame:f,...photoDependents(frames,f),waiting:waitingConnections(f),blocked:!canDrop(f)};
+      const x=(i-(n-1)/2)*(tw+.008),y=h/2-photoY-th/2,details={index:i,action:'keep',frame:f,...photoDependents(frames,f),waiting:waitingConnections(f),blocked:!canDrop(f)};
       const tex=textTexture(300,Math.round(300*th/tw),(g,cw2,ch2)=>drawPhotoTile(g,cw2,ch2,{number:i+1,img:cardImage(f.thumbnail,()=>tex.userData.draw()),text:photoInspectionText(details).replace(/^Photo \d+ /,''),sky:palette.sky[1]}));
       const m=new THREE.Mesh(new THREE.PlaneGeometry(tw,th),new THREE.MeshBasicMaterial({map:tex,transparent:true,toneMapped:false,depthTest:false,depthWrite:true,alphaTest:.05}));m.position.set(x,y,.004);m.renderOrder=31;vcard.group.add(m);
-      cardPill({label:`Drop photo ${i+1}`,disabled:!canDrop(f),act:()=>{removeFrame(f);flash('Photo dropped.');play('remove');}},.095,new V3(x,y-th/2-.018,.004));
+      cardPill({label:`Drop photo ${i+1}`,disabled:!canDrop(f),act:()=>{removeFrame(f);flash('Photo dropped.');play('remove');}},.12,new V3(x,y-th/2-.022,.004));
     });
-    const busy=!!rewind||checkpointLoading||checkpointSaving,stable=checkpointStable(),cy=h/2-top-th-.045-.03-ch/2;
+    const busy=!!rewind||checkpointLoading||checkpointSaving,stable=checkpointStable(),cy=h/2-slotY-ch/2;
     checkpointSlots.forEach((slot,i)=>{
-      const x=(i-1)*(cw+.012);
+      const x=(i-1)*(cw+.016);
       const b=cardKey({label:slot?`Restore ${i+1}`:`Save ${i+1}`,disabled:busy||!slot&&!stable,act:()=>{if(slot){closeCard();restoreCheckpoint(i);}else saveCheckpoint(i);}},{w:cw,h:ch,tw:300,th:Math.round(300*ch/cw),
         draw:(g,cw2,ch2,hover)=>drawLevelTile(g,cw2,ch2,{number:i+1,title:slot?'Go back here':'Save here',img:slot?.image?cardImage(slot.image,()=>b.userData.redraw()):null},hover)},new V3(x,cy,.004));
-      if(slot)cardPill({label:`Save over ${i+1}`,disabled:busy||!stable,act:()=>saveCheckpoint(i)},.08,new V3(x,cy-ch/2-.017,.004));
+      if(slot)cardPill({label:`Save over ${i+1}`,disabled:busy||!stable,act:()=>saveCheckpoint(i)},.11,new V3(x,cy-ch/2-.021,.004));
     });
-    cardPill({label:'Close',act:()=>closeCard()},.07,new V3(w/2-.055,h/2-.04,.004));
+    placeKeys([],h);
   }else if(vcard.kind==='menu'){
     const action=fn=>()=>{closeCard();fn();};
     const items=[
@@ -2366,10 +2392,9 @@ function buildCard(){
       ...(levelConversation()?[{label:'Story',act:action(()=>showLevelDialogue())}]:[]),
       {label:'How to play',act:action(()=>vr.guide.start())}
     ];
-    const w=.36,rows=Math.ceil(items.length/2),h=.08+rows*.045+.065;
+    const h=headHeight('')+keysHeight(items);
     cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:'Seamline',title:'Menu'}));
-    items.forEach((item,i)=>cardPill(item,.15,new V3((i%2-.5)*.16,h/2-.08-.0225-Math.floor(i/2)*.045,.004)));
-    cardPill({label:'Close',act:()=>closeCard()},.12,new V3(0,-h/2+.035,.004));
+    placeKeys(items,h);
   }else if(vcard.kind==='settings'){
     // The settings that matter in a headset, as on screen: sound, following the traveller, the
     // connection edges, motion and detail. Each key shows its state; press to change it.
@@ -2384,30 +2409,25 @@ function buildCard(){
       {label:'Reduced motion',active:reducedMotion(),act:()=>{settings.motion=reducedMotion()?'full':'reduced';applyComfort();save();}},
       {label:'Low detail',active:settings.quality==='low',act:()=>{settings.quality=settings.quality==='low'?'high':'low';applyComfort();save();}}
     ];
-    const w=.4,rows=Math.ceil(items.length/2),h=.08+rows*.045+.065;
+    const h=headHeight('')+keysHeight(items);
     cardBack(w,h,(g,cw2,ch2)=>drawSheet(g,cw2,ch2,{kicker:'Preferences',title:'Settings'}));
-    items.forEach((item,i)=>cardPill(item,.17,new V3((i%2-.5)*.18,h/2-.08-.0225-Math.floor(i/2)*.045,.004)));
-    cardPill({label:'Close',act:()=>closeCard()},.12,new V3(0,-h/2+.035,.004));
-  }else if(vcard.kind==='place'){
-    const p=vcard.place,w=.36,h=.25;
-    const tex=cardBack(w,h,(g,cw2,ch2)=>drawPlaceCard(g,cw2,ch2,{title:p.title,line:p.line,photos:p.shots.map(src=>cardImage(src,()=>tex.userData.draw())),sky:palette.sky[1]}));
-    cardPill({label:'Continue',primary:true,act:()=>{closeCard();loadLevel(p.next);}},.14,new V3(0,-h/2-.03,.004));
+    placeKeys(items,h);
   }else if(vcard.kind==='album'){
-    const chapters=albumChapters(),k=vcard.chapter=Math.max(0,Math.min(chapters.length-1,vcard.chapter)),c=chapters[k],w=.4,h=.088+Math.ceil(c.levels.length/5)*.08+.07;
-    cardBack(w,h,(g,cw,ch)=>drawAlbumCard(g,cw,ch,{chapter:c.name,subject:c.subject,page:k+1,pages:chapters.length}));
-    const cols=5,tw=.066,th=.075,stepX=.072,stepY=.08;
+    // A place at a time: its levels as tiles, then the keys to turn the page.
+    const chapters=albumChapters(),k=vcard.chapter=Math.max(0,Math.min(chapters.length-1,vcard.chapter)),c=chapters[k];
+    const cols=5,tw=.07,th=.085,stepX=.075,stepY=.092,rows=Math.ceil(c.levels.length/cols),top=headHeight(c.subject)+.008;
+    const keys=[{label:'Previous',disabled:k===0,act:()=>{vcard.chapter--;buildCard();}},{label:'Next',disabled:k===chapters.length-1,act:()=>{vcard.chapter++;buildCard();}},
+      {label:'How to play',act:()=>{closeCard();vr.guide.start();}},{label:'Close',act:()=>closeCard()}];
+    const h=top+rows*stepY+.008+keysHeight(keys,false);
+    cardBack(w,h,(g,cw,ch)=>drawSheet(g,cw,ch,{kicker:`Album · ${k+1} of ${chapters.length}`,title:c.name,subtitle:c.subject}));
     c.levels.forEach((i,n)=>{
       const L=LEVELS[i],preview=ALBUM_PREVIEWS[L.name],src=preview?.revision===levelRevision(L)?preview.src:null;
       const row=Math.floor(n/cols),col=n%cols,count=Math.min(cols,c.levels.length-row*cols);
       const b=cardKey({label:levelTitle(L),act:()=>{closeCard();loadLevel(i);}},{w:tw,h:th,tw:300,th:Math.round(300*th/tw),
         draw:(g,cw,ch,hover)=>drawLevelTile(g,cw,ch,{number:campaignNumber(LEVEL_ORDER,i),title:levelTitle(L),done:!!progress.done[L.name],current:i===levelIndex,img:src?cardImage(src,()=>b.userData.redraw()):null},hover)},
-        new V3((col-(count-1)/2)*stepX,h/2-.088-th/2-row*stepY,.004));
+        new V3((col-(count-1)/2)*stepX,h/2-top-th/2-row*stepY,.004));
     });
-    const y=-h/2+.032;
-    if(k>0)cardPill({label:'Previous',act:()=>{vcard.chapter--;buildCard();}},.1,new V3(-.13,y,.004));
-    cardPill({label:'How to play',act:()=>{closeCard();vr.guide.start();}},.12,new V3(0,y,.004));
-    if(k<chapters.length-1)cardPill({label:'Next',act:()=>{vcard.chapter++;buildCard();}},.1,new V3(.13,y,.004));
-    cardPill({label:'Close',act:()=>closeCard()},.07,new V3(w/2-.055,h/2-.04,.004));
+    placeKeys(keys,h,false);
   }
 }
 function openCard(kind){
@@ -2957,7 +2977,10 @@ function vrFrame(dt){
   const replace=frames.findIndex(canDrop),text=guideText??maker?.vrPanel()??`${levelTitle(level)}\n${hudStatus||(complete?'':level.hint)}\nPhotos ${frames.length}/${level.frames}`;
   if(text!==vr.panelText){vr.panelText=text;vr.infoTexture.userData.draw();}
   vr.panel.visible=!vcard.kind;
-  // The guide is available on demand through More or Album; entering VR never starts it.
+  // The first level is the intro: in the headset the guide starts by itself each time it opens there
+  // or you enter VR there (not on a restart; Skip guide ends it). Anywhere else, How to play replays it.
+  if(levelIndex!==LEVEL_ORDER[0]||extraIndex!==null||maker?.active)vr.guideShown=false;
+  else if(!vr.guideShown&&!entry&&!vcard.kind&&!complete&&mode!=='intro'){vr.guideShown=true;if(!vr.guide.active)vr.guide.start();}
 }
 async function enterVR(){
   if(vr.on||vr.starting||!navigator.xr)return false;
@@ -2980,7 +3003,7 @@ async function enterVR(){
     renderer.xr.setReferenceSpaceType('local-floor');await renderer.xr.setSession(session);
     vr.on=true;vr.rig.visible=true;placeIsland();document.body.classList.add('in-vr');
     session.addEventListener('end',()=>{
-      vr.guide.stop();hideVRCues();closeCard();
+      vr.guide.stop();vr.guideShown=false;hideVRCues();closeCard();
       vr.on=false;vr.rig.visible=false;vr.hover.visible=false;vr.framing=null;vr.align=null;vr.view=null;
       grab.key='';grab.base=null;
       scene.position.set(0,0,0);scene.rotation.set(0,0,0);scene.scale.setScalar(1);scene.updateMatrixWorld(true);
@@ -3150,6 +3173,28 @@ const fpsMeter=new URLSearchParams(location.search).has('fps')?(()=>{
     }else if(plane)plane.visible=false;
   };
 })():null;
+// A line-up is measured from between your eyes, but in a headset each eye looks from a little to one side,
+// so two edges at different depths never quite meet: each eye sees a small step, and together they read
+// as two paths at two depths. Near a line-up, and at a photo's own view (where the traveller crosses),
+// both eyes ease toward that middle point, as you would close one eye to see such an illusion, and the
+// edges meet as one path. Away from it the world is back in full depth.
+const EYES_FROM=10,EYES_FULL=VR_SNAP_DEG; // degrees off a line-up: start easing, fully together
+function eyesTogether(dt){
+  const near=off=>off==null?0:1-Math.min(1,Math.max(0,(off-EYES_FULL)/(EYES_FROM-EYES_FULL)));
+  let want=0;
+  if(!vcard.kind&&!story.open&&!maker?.editing){
+    if(vr.view?.p&&!complete)want=near(aligned.some(p=>p.seam===vr.view.p.seam)?0:vr.view.off);
+    for(const f of frames)if(f.links.length)want=Math.max(want,near(f.off));
+  }
+  want=want*want*(3-2*want);
+  vr.eyes=(vr.eyes??0)+(want-(vr.eyes??0))*Math.min(1,dt*4);
+  const cams=renderer.xr.getCamera().cameras;if(cams.length<2||vr.eyes<.001)return;
+  const mid=new V3();for(const c of cams)mid.add(new V3().setFromMatrixPosition(c.matrixWorld));mid.multiplyScalar(1/cams.length);
+  for(const c of cams){
+    const p=new V3().setFromMatrixPosition(c.matrixWorld).lerp(mid,vr.eyes);
+    c.matrixWorld.setPosition(p);c.matrixWorldInverse.copy(c.matrixWorld).invert();
+  }
+}
 function loop(now){
   // Attaching an XR session is asynchronous. Do not submit a desktop camera frame in between.
   if(vr.starting)return;
@@ -3159,6 +3204,7 @@ function loop(now){
     renderer.xr.updateCamera(vr.cam);
   }
   const dt=Math.max(0,Math.min((now-lastTime)/1000,.1));lastTime=Math.max(lastTime,now);elapsed+=dt;if(dt>0)fps+=(1/dt-fps)*.05;
+  if(vr.on)eyesTogether(dt);
   if(rewind){updateRewind(dt);updateAir(dt);art.scale(scene.scale.x);showOutlines(vr.on);renderer.render(scene,camera);drawOverlay();updateHud(now);return;}
   if(mode==='intro'&&!reducedMotion())titleDemo(dt);// the title screen: the island turns slowly behind it
   updateCamera(dt);if(vr.on)vrFrame(dt);fpsMeter?.(now,dt);
@@ -3378,7 +3424,7 @@ window.__illusion={
   vrPress:label=>[...vcard.buttons,...vr.buttons].find(b=>b.userData.label===label)?.userData.act(),
   vr:()=>({on:vr.on,starting:!!vr.starting,turn:vr.turn,head:vr.cam.position.toArray(),hands:vr.hands.map(h=>({look:h.model?.mode??null,mesh:h.model?.mesh??null,trusted:h.trusted!==false,wrist:h.hand.joints.wrist?.position.toArray()??null,tip:h.hand.joints['index-finger-tip']?.visible?h.hand.joints['index-finger-tip'].position.toArray():null,side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,gap:h.gap,grip:!!h.grip,grabbing:!!h.grabbing,open:h.shape?.open??null,center:h.shape?.center.toArray()??null,ray:h.hasRay?{origin:h.rayOrigin.toArray(),dir:h.rayDir.toArray()}:null,target:h.target?.node?{at:[h.target.node.x,h.target.node.y,h.target.node.z],reach:!!h.target.reach,touch:!!h.target.touch}:h.target?.button?{button:h.target.button.userData.label}:null})),grabbed:!!grab.key,ar:!!vr.ar,room:!!(vr.ar&&settings.vrRoom),sky:!!vr.sky?.visible,prints:frames.map(f=>({visible:f.group.visible,scale:f.group.scale.x})),align:vr.align?{yaw:vr.align.yaw,pitch:vr.align.pitch}:null,snap:VR_SNAP_DEG,pointer:{hover:!!vr.hover?.visible,trail:pointer.trail.filter(m=>m.visible).length,beams:vr.hands.filter(h=>h.beam?.visible).length},
     controllers:vr.controllers.map(h=>({side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,origin:h.origin.toArray(),direction:h.direction.toArray()})),
-    framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,buttons:[...vr.buttons,...vcard.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
+    eyes:vr.eyes??0,eyeGap:(c=>c.length===2?new V3().setFromMatrixPosition(c[0].matrixWorld).distanceTo(new V3().setFromMatrixPosition(c[1].matrixWorld)):null)(renderer.xr.getCamera().cameras),framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,buttons:[...vr.buttons,...vcard.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
   enterVR,exitVR:()=>renderer.xr.getSession()?.end(),nextLevel,albumChapters:()=>albumChapters().map(c=>({name:c.name,levels:c.levels})),
   // A point on the island (level coordinates) in the room.
   toRoom:p=>scene.localToWorld(new V3(...p)).toArray()

@@ -114,34 +114,6 @@ function wrapText(g,text,maxWidth){
   for(const word of String(text).split(' ')){const next=line?line+' '+word:word;if(line&&g.measureText(next).width>maxWidth){lines.push(line);line=word;}else line=next;}
   if(line)lines.push(line);return lines;
 }
-// The finish card, as on screen: the photo of the traveller home, where it was, the level's name and
-// its caption. The way on is a button below, drawn separately.
-export function drawFinishCard(g,w,h,{location='',title='',caption='',photo=null,sky=null}){
-  g.clearRect(0,0,w,h);
-  card(g,24,20,w-48,h-48,34);
-
-  const size=h*.5;photoCard(g,photo,64+size/2,h*.42,size,-.04,sky);
-  const left=64+size+56,mid=left+(w-64-left)/2,width=w-64-left-20;
-  g.textAlign='center';g.textBaseline='alphabetic';
-  g.fillStyle=INK_SOFT;g.font=`600 26px ${SANS}`;g.fillText(location.toUpperCase(),mid,h*.2,width);
-  g.fillStyle=INK;g.font=`600 56px ${SERIF}`;
-  const titleLines=wrapText(g,title,width).slice(0,2);titleLines.forEach((t,i)=>g.fillText(t,mid,h*.33+i*60,width));
-  const ry=h*.33+(titleLines.length-1)*60+34;rule(g,mid,ry);
-  g.fillStyle=INK_SOFT;g.font=`italic 32px ${SERIF}`;
-  wrapText(g,caption,width).slice(0,3).forEach((t,i)=>g.fillText(t,mid,ry+56+i*40,width));
-}
-// The album: a header with the place and what it is about, and which page of how many. The levels and
-// the buttons are separate keys on top.
-export function drawAlbumCard(g,w,h,{chapter='',subject='',page=1,pages=1}){
-  g.clearRect(0,0,w,h);
-  card(g,24,20,w-48,h-48,34);
-
-  g.textAlign='left';g.textBaseline='alphabetic';
-  g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText(`ALBUM · ${page} OF ${pages}`,72,82);
-  g.fillStyle=INK;g.font=`600 52px ${SERIF}`;g.fillText(chapter,72,144,w-200);
-  
-  g.fillStyle=INK_SOFT;g.font=`italic 28px ${SERIF}`;g.fillText(subject,72,198,w-144);
-}
 // One level in the album: its picture, number and name, and a gold tick once it is done.
 export function drawLevelTile(g,w,h,{number=1,title='',done=false,current=false,img=null},hover=false){
   g.clearRect(0,0,w,h);
@@ -165,24 +137,29 @@ export function drawLevelTile(g,w,h,{number=1,title='',done=false,current=false,
     g.strokeStyle=PAPER;g.lineWidth=4;g.lineCap='round';g.beginPath();g.moveTo(cx-8,cy);g.lineTo(cx-2,cy+6);g.lineTo(cx+8,cy-6);g.stroke();
   }
   g.textAlign='center';g.textBaseline='alphabetic';
-  g.fillStyle=INK_SOFT;g.font=`600 22px ${SANS}`;g.fillText(String(number).padStart(2,'0'),w/2,y+pad+ph+30);
-  g.fillStyle=INK;g.font=`600 28px ${SERIF}`;g.fillText(title,w/2,y+pad+ph+64,kw-16);
+  g.fillStyle=INK_SOFT;g.font=`600 26px ${SANS}`;g.fillText(String(number).padStart(2,'0'),w/2,y+pad+ph+32);
+  g.fillStyle=INK;g.font=`600 34px ${SERIF}`;g.fillText(title,w/2,y+pad+ph+70,kw-16);
 }
 // A pill button: paper with ink, or ink with paper for the one thing to do next. Hovered, it warms
 // to gold so you can see which button a pinch will press.
 // A card page: a small heading in capitals, a title, a gold rule and a line under it, and any labels for
 // the rows below (each at a fraction of the height). The keys on it are separate.
-export function drawSheet(g,w,h,{kicker='',title='',subtitle='',labels=[]}){
+// Every card uses this page, as Settings does: the heading top left, the content in the middle, the keys
+// along the bottom. labels are small section headings, notes a quiet line of text, photos polaroids;
+// their positions are fractions of the page.
+export function drawSheet(g,w,h,{kicker='',title='',subtitle='',labels=[],notes=[],photos=[],sky=null}){
   g.clearRect(0,0,w,h);
   card(g,24,20,w-48,h-48,34);
 
   g.textAlign='left';g.textBaseline='alphabetic';
   g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText(kicker.toUpperCase(),72,82,w-144);
   g.fillStyle=INK;g.font=`600 52px ${SERIF}`;g.fillText(title,72,144,w-144);
-  rule(g,w/2,180,w/2-72);
-  if(subtitle){g.fillStyle=INK_SOFT;g.font=`italic 28px ${SERIF}`;g.fillText(subtitle,72,220,w-144);}
+  if(subtitle){g.fillStyle=INK_SOFT;g.font=`italic 30px ${SERIF}`;g.fillText(subtitle,72,192,w-144);}
+  rule(g,w/2,subtitle?220:180,w/2-72);
+  for(const {text,y} of labels){g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText(text.toUpperCase(),72,y*h,w-144);}
   g.textAlign='center';
-  for(const {text,y} of labels){g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText(text.toUpperCase(),w/2,y*h,w-200);}
+  for(const {text,y} of notes){g.fillStyle=INK_SOFT;g.font=`italic 30px ${SERIF}`;g.fillText(text,w/2,y*h,w-144);}
+  for(const p of photos)photoCard(g,p.img,p.x*w,p.y*h,p.size*w,p.turn??0,sky);
 }
 // One photo on the photos card: the picture, its number, and what it keeps.
 export function drawPhotoTile(g,w,h,{number=1,img=null,text='',sky=null}){
@@ -197,19 +174,6 @@ export function drawPhotoTile(g,w,h,{number=1,img=null,text='',sky=null}){
   g.fillStyle=INK;g.font=`600 30px ${SERIF}`;g.fillText(`Photo ${number}`,w/2,6+pad+ph+40,w-40);
   g.fillStyle=INK_SOFT;g.font=`24px ${SANS}`;
   wrapText(g,text,w-48).slice(0,3).forEach((t,i)=>g.fillText(t,w/2,6+pad+ph+74+i*30,w-40));
-}
-// Moving on to a new place: the last place's photos, then the new place's name and what it is about.
-export function drawPlaceCard(g,w,h,{title='',line='',photos=[],sky=null}){
-  g.clearRect(0,0,w,h);
-  card(g,24,20,w-48,h-48,34);
-
-  const size=h*.3,n=photos.length,turns=[-.1,.07,-.04,.12];
-  photos.forEach((img,i)=>photoCard(g,img,w/2+(i-(n-1)/2)*size*.82,h*.27,size,turns[i%4],sky));
-  g.textAlign='center';g.textBaseline='alphabetic';
-  g.fillStyle=INK_SOFT;g.font=`600 24px ${SANS}`;g.fillText('NEXT PLACE',w/2,h*.56);
-  g.fillStyle=INK;g.font=`600 56px ${SERIF}`;g.fillText(title,w/2,h*.56+64,w-200);
-  rule(g,w/2,h*.56+90);
-  g.fillStyle=INK_SOFT;g.font=`italic 30px ${SERIF}`;g.fillText(line,w/2,h*.56+140,w-160);
 }
 // Under the frame while you hold it: what the photo would do, and what it would replace.
 export function drawFrameLabel(g,w,h,{label='',extra='',ready=false}){
