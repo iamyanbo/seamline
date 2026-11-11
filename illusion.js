@@ -32,11 +32,11 @@ import {railMeshes} from './illusion-rails.js';
 Object.assign(THEMES,MORE,LIFT_THEMES);
 const LEVEL_ORDER=campaignOrder(LEVELS);
 const FINALE_LEVELS=chapterFinales(LEVELS,LEVEL_ORDER);
-const settings={twoL:true,skeleton:true,debug:false,hints:true,follow:true,music:true,vrEyes:true,...comfortSettings()};
+const settings={twoL:true,skeleton:true,debug:false,hints:true,follow:true,music:true,...comfortSettings()};
 try{
   const shared=JSON.parse(localStorage.getItem('frameshift-settings')||'{}'),own=JSON.parse(localStorage.getItem('frameshift-illusion')||'{}');
   for(const k of ['twoL','skeleton','debug'])if(typeof shared?.[k]==='boolean')settings[k]=shared[k];
-  for(const k of ['hints','follow','music','vrGuideDone','vrRoom','vrEyes'])if(typeof own?.[k]==='boolean')settings[k]=own[k];
+  for(const k of ['hints','follow','music','vrGuideDone','vrRoom'])if(typeof own?.[k]==='boolean')settings[k]=own[k];
   Object.assign(settings,comfortSettings(own));
 }catch{}
 const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
@@ -630,7 +630,7 @@ function animateJoins(){
     f.group.visible=vr.on;
     // From its own direction a photo fades away, so you see the live world through it exactly where it
     // lines up; from elsewhere it is a floating print. It develops (the haze clears) once it comes true.
-    const off=angleBetween(viewDir(f.cam),viewDir(camera)),seen=Math.min(1,Math.max(0,(off-2)/18));f.off=off;
+    const off=angleBetween(viewDir(f.cam),viewDir(camera)),seen=Math.min(1,Math.max(0,(off-2)/18));
     const developed=f.flashAt>0?Math.min(1,(elapsed-f.flashAt)/1.4):0;
     const life=level.fade?Math.min(1,Math.max(0,(level.fade-(elapsed-f.born))/(level.fade*.4))):1;
     const v=viewDir(camera),n=viewDir(f.cam),facing=Math.abs(v[0]*n[0]+v[1]*n[1]+v[2]*n[2]),edgeOn=Math.min(1,Math.max(0,(facing-.18)/.25));
@@ -2012,7 +2012,7 @@ const HOLD_SIZE=.22,HOLD_LIFT=.16,HOLD_CHARGE=.9,HOLD_SHOW=.2;
 const vr={on:false,turn:0,hands:[],controllers:[],rig:new THREE.Group(),cam:new THREE.PerspectiveCamera(60,1,.02,100),fog:null,
   anchor:{pos:TABLE.clone(),quat:new THREE.Quaternion(),size:ISLAND},goal:{pos:TABLE.clone(),quat:new THREE.Quaternion(),size:ISLAND},
   hold:{state:'idle',charge:0,lost:0,closing:0,yaw:0,last:null,speed:0,mute:false,ring:null,spin:null,spun:0},align:null,rt:null,quad:null,outline:null,hover:null,panel:null,panelText:'',dock:new THREE.Group(),tray:new THREE.Group(),buttons:[],skyFor:null,sky:null};
-renderer.xr.enabled=true;renderer.xr.cameraAutoUpdate=false;// the loop updates the eye cameras itself (see eyesTogether)
+renderer.xr.enabled=true;
 // Things in the room (hands, panel, buttons, sky) hang off a rig that cancels the island's placement.
 vr.rig.matrixAutoUpdate=false;vr.rig.visible=false;scene.add(vr.rig);vr.rig.add(vr.dock,vr.tray);
 for(let i=0;i<2;i++){
@@ -2411,8 +2411,7 @@ function buildCard(){
         {label:'Follow the traveller',on:settings.follow,act:()=>{settings.follow=!settings.follow;save();}},
         {label:'Connection edges',on:settings.hints,act:()=>{settings.hints=!settings.hints;save();}},
         {label:'Reduced motion',on:reducedMotion(),act:()=>{settings.motion=reducedMotion()?'full':'reduced';applyComfort();save();}},
-        {label:'Low detail',on:settings.quality==='low',act:()=>{settings.quality=settings.quality==='low'?'high':'low';applyComfort();save();}},
-        {label:'Eyes meet at line-ups',on:settings.vrEyes,act:()=>{settings.vrEyes=!settings.vrEyes;save();}}
+        {label:'Low detail',on:settings.quality==='low',act:()=>{settings.quality=settings.quality==='low'?'high':'low';applyComfort();save();}}
       ]]
     ];
     const RH=.044,RW=.18,top=headHeight('')+.012,first=top+.04,h=first+Math.max(...columns.map(c=>c[1].length))*RH+.022;
@@ -3182,28 +3181,6 @@ const fpsMeter=new URLSearchParams(location.search).has('fps')?(()=>{
     }else if(plane)plane.visible=false;
   };
 })():null;
-// A line-up is measured from between your eyes, but in a headset each eye looks from a little to one side,
-// so two edges at different depths never quite meet: each eye sees a small step, and together they read
-// as two paths at two depths. At a line-up, and at a photo's own view (where the traveller crosses),
-// both eyes move to that middle point, as you would close one eye to see such an illusion, and the
-// edges meet as one path. Away from it the world is back in full depth.
-// A slow change reads as the world zooming, which is uncomfortable, so it only happens once you are
-// lined up (or at a photo's view), and quickly, like closing an eye. Settings can turn it off.
-const EYES_PHOTO=2.5,EYES_SPEED=12; // degrees from a photo's view; how fast the eyes meet and part
-function eyesTogether(dt){
-  let want=0;
-  if(settings.vrEyes&&!vcard.kind&&!story.open&&!maker?.editing){
-    if(vr.view?.p&&!complete&&aligned.some(p=>p.seam===vr.view.p.seam))want=1;
-    for(const f of frames)if(f.links.length&&f.off!=null&&f.off<=EYES_PHOTO)want=1;
-  }
-  vr.eyes=(vr.eyes??0)+(want-(vr.eyes??0))*Math.min(1,dt*EYES_SPEED);
-  const cams=renderer.xr.getCamera().cameras;if(cams.length<2||vr.eyes<.001)return;
-  const mid=new V3();for(const c of cams)mid.add(new V3().setFromMatrixPosition(c.matrixWorld));mid.multiplyScalar(1/cams.length);
-  for(const c of cams){
-    const p=new V3().setFromMatrixPosition(c.matrixWorld).lerp(mid,vr.eyes);
-    c.matrixWorld.setPosition(p);c.matrixWorldInverse.copy(c.matrixWorld).invert();
-  }
-}
 function loop(now){
   // Attaching an XR session is asynchronous. Do not submit a desktop camera frame in between.
   if(vr.starting)return;
@@ -3213,7 +3190,6 @@ function loop(now){
     renderer.xr.updateCamera(vr.cam);
   }
   const dt=Math.max(0,Math.min((now-lastTime)/1000,.1));lastTime=Math.max(lastTime,now);elapsed+=dt;if(dt>0)fps+=(1/dt-fps)*.05;
-  if(vr.on)eyesTogether(dt);
   if(rewind){updateRewind(dt);updateAir(dt);art.scale(scene.scale.x);showOutlines(vr.on);renderer.render(scene,camera);drawOverlay();updateHud(now);return;}
   if(mode==='intro'&&!reducedMotion())titleDemo(dt);// the title screen: the island turns slowly behind it
   updateCamera(dt);if(vr.on)vrFrame(dt);fpsMeter?.(now,dt);
@@ -3433,7 +3409,7 @@ window.__illusion={
   vrPress:label=>[...vcard.buttons,...vr.buttons].find(b=>b.userData.label===label)?.userData.act(),
   vr:()=>({on:vr.on,starting:!!vr.starting,turn:vr.turn,head:vr.cam.position.toArray(),hands:vr.hands.map(h=>({look:h.model?.mode??null,mesh:h.model?.mesh??null,trusted:h.trusted!==false,wrist:h.hand.joints.wrist?.position.toArray()??null,tip:h.hand.joints['index-finger-tip']?.visible?h.hand.joints['index-finger-tip'].position.toArray():null,side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,gap:h.gap,grip:!!h.grip,grabbing:!!h.grabbing,open:h.shape?.open??null,center:h.shape?.center.toArray()??null,ray:h.hasRay?{origin:h.rayOrigin.toArray(),dir:h.rayDir.toArray()}:null,target:h.target?.node?{at:[h.target.node.x,h.target.node.y,h.target.node.z],reach:!!h.target.reach,touch:!!h.target.touch}:h.target?.button?{button:h.target.button.userData.label}:null})),grabbed:!!grab.key,ar:!!vr.ar,room:!!(vr.ar&&settings.vrRoom),sky:!!vr.sky?.visible,prints:frames.map(f=>({visible:f.group.visible,scale:f.group.scale.x})),align:vr.align?{yaw:vr.align.yaw,pitch:vr.align.pitch}:null,snap:VR_SNAP_DEG,pointer:{hover:!!vr.hover?.visible,trail:pointer.trail.filter(m=>m.visible).length,beams:vr.hands.filter(h=>h.beam?.visible).length},
     controllers:vr.controllers.map(h=>({side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,origin:h.origin.toArray(),direction:h.direction.toArray()})),
-    eyes:vr.eyes??0,eyeGap:(c=>c.length===2?new V3().setFromMatrixPosition(c[0].matrixWorld).distanceTo(new V3().setFromMatrixPosition(c[1].matrixWorld)):null)(renderer.xr.getCamera().cameras),framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,buttons:[...vr.buttons,...vcard.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
+    framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,buttons:[...vr.buttons,...vcard.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
   enterVR,exitVR:()=>renderer.xr.getSession()?.end(),nextLevel,albumChapters:()=>albumChapters().map(c=>({name:c.name,levels:c.levels})),
   // A point on the island (level coordinates) in the room.
   toRoom:p=>scene.localToWorld(new V3(...p)).toArray()
