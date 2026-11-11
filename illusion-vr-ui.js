@@ -215,6 +215,37 @@ export function drawFrameLabel(g,w,h,{label='',extra='',ready=false}){
 // A key, as the web buttons: cream with a fine border and rounded ends; the one thing to do next is plum
 // ink with cream text. Hovered (what a pinch or a fingertip would press), it gets a plum outline. A round
 // key is the close button in a card's corner. A key that switches something on shows a switch.
+// Your photos beside the island, as the tray on screen: a heading and how many are taken of how many.
+export function drawFilmPlate(g,w,h,{taken=0,limit=1}){
+  g.clearRect(0,0,w,h);
+  card(g,10,10,w-20,h-20,34,{shadow:.2,lift:4});
+  g.textAlign='left';g.textBaseline='middle';g.fillStyle=INK_SOFT;g.font=`600 30px ${SANS}`;
+  if('letterSpacing' in g)g.letterSpacing='3px';g.fillText('YOUR PHOTOS',44,60,w-200);if('letterSpacing' in g)g.letterSpacing='0px';
+  const chip=`${taken}/${limit}`;g.font=`600 32px ${SANS}`;const cw=g.measureText(chip).width+34;
+  g.fillStyle=ACCENT_SOFT;g.beginPath();g.roundRect(w-40-cw,36,cw,46,12);g.fill();
+  g.fillStyle=INK;g.textAlign='center';g.fillText(chip,w-40-cw/2,60);
+}
+// One slot in it: the photo with its number, or an empty slot waiting for one. A new photo glows.
+export function drawFilmSlot(g,w,h,{number=1,img=null,empty=false,glow=0},hover=false){
+  g.clearRect(0,0,w,h);
+  const x=8,y=8,kw=w-16,kh=h-16,r=20;
+  if(empty){
+    g.fillStyle=hover?'#fff':'rgba(246,241,232,.9)';g.beginPath();g.roundRect(x,y,kw,kh,r);g.fill();
+    g.setLineDash([14,10]);g.strokeStyle=hover?ACCENT:'rgba(43,33,64,.3)';g.lineWidth=hover?5:3;g.stroke();g.setLineDash([]);
+    const cx=w/2,cy=h*.42;g.strokeStyle=INK_SOFT;g.lineWidth=5;g.lineCap='round';
+    g.beginPath();g.moveTo(cx-20,cy);g.lineTo(cx+20,cy);g.moveTo(cx,cy-20);g.lineTo(cx,cy+20);g.stroke();
+    g.fillStyle=INK_SOFT;g.font=`500 34px ${SANS}`;g.textAlign='center';g.textBaseline='middle';g.fillText(`Slot ${number}`,w/2,h*.76,kw-20);
+    return;
+  }
+  if(glow>0){g.save();g.shadowColor=`rgba(255,211,107,${glow})`;g.shadowBlur=30;g.fillStyle='#fff';g.beginPath();g.roundRect(x,y,kw,kh,r);g.fill();g.restore();}
+  g.fillStyle='#fff';g.beginPath();g.roundRect(x,y,kw,kh,r);g.fill();
+  g.strokeStyle=hover?ACCENT:glow>0?`rgba(233,169,58,${.4+glow*.6})`:LINE;g.lineWidth=hover||glow>0?5:2;g.stroke();
+  const pad=16,pw=kw-pad*2,ph=kh*.66;
+  g.save();g.beginPath();g.roundRect(x+pad,y+pad,pw,ph,10);g.clip();g.fillStyle='#e9dccd';g.fillRect(x+pad,y+pad,pw,ph);
+  if(img?.complete&&img.naturalWidth){const k=Math.max(pw/img.naturalWidth,ph/img.naturalHeight),iw=img.naturalWidth*k,ih=img.naturalHeight*k;g.drawImage(img,x+pad+(pw-iw)/2,y+pad+(ph-ih)/2,iw,ih);}
+  g.restore();
+  g.fillStyle=INK;g.font=`600 34px ${SERIF}`;g.textAlign='center';g.textBaseline='middle';g.fillText(`Photo ${number}`,w/2,y+pad+ph+(kh-pad-ph)/2,kw-20);
+}
 export function drawButton(g,w,h,item,hover=false){
   g.clearRect(0,0,w,h);
   if(item.round){

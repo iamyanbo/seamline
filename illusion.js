@@ -12,7 +12,7 @@ import {ALBUM_PREVIEWS} from './illusion-album-previews.js';
 import {conversationFor,PEOPLE} from './illusion-story.js';
 import {createStoryUI} from './illusion-story-ui.js';
 import {createVRGuide} from './illusion-vr-guide.js';
-import {drawPanel,drawButton,drawTool,drawToolbar,drawLevelTile,drawSheet,drawSettingRow,drawPhotoTile,drawFrameLabel} from './illusion-vr-ui.js';
+import {drawPanel,drawButton,drawTool,drawToolbar,drawLevelTile,drawSheet,drawSettingRow,drawFilmPlate,drawFilmSlot,drawPhotoTile,drawFrameLabel} from './illusion-vr-ui.js';
 import {createHandModel} from './illusion-vr-hands.js';
 import {LESSON_LEVELS,AUTO_LESSONS,LESSON_CUES,lessonMilestone,lessonFor,drawDemoPointer} from './illusion-tutorial.js';
 import {SEEN,SNAP_WINDOW,reachable,MIN_PITCH,MAX_PITCH,seamsIn,seamEdges,seamWithin,seamLine,sightClear,offLine,bothAlong,angleBetween,dirOf,swungCells,misalignAlong,linesUp,positionsOf,nextPosition,moverBlocks,levelCells,plateOf,riding,pieceOf,solidsOf,tilesIn,stepsIn,stoneHidden,hiddenAlong,actuation} from './illusion-geometry.js';
@@ -2253,7 +2253,56 @@ function syncVRButtons(){
   });
 }
 // Buttons that can be pointed at: on screen, and not folded away.
-const liveButtons=()=>[...vr.buttons,...vcard.buttons].filter(b=>{if(b.parent===vr.tray&&menu.shown<.85)return false;for(let o=b;o;o=o.parent)if(!o.visible)return false;return true;});
+const liveButtons=()=>[...vr.buttons,...vcard.buttons,...film.buttons].filter(b=>{if(b.parent===vr.tray&&menu.shown<.85)return false;for(let o=b;o;o=o.parent)if(!o.visible)return false;return true;});
+// ---------- VR photos beside the island ----------
+// As the tray on screen: your photos stand on the near right of the island, opposite the shelf, one slot
+// for each photo the level allows; a photo shows in its slot with its number, an empty slot waits with a
+// plus. A new photo pops into its slot with a gold glow. Touch a photo (or the stand) to open Photos,
+// where each one says what it keeps and can be dropped.
+const FILM_W=.056,FILM_H=.07,FILM_STEP=.062;
+const film={group:new THREE.Group(),buttons:[],plate:null,key:'',shown:0,fresh:new Map()};
+film.group.visible=false;vr.rig.add(film.group);
+function syncFilm(){
+  const limit=level.frames,key=limit+'|'+frames.map(f=>f.born).join();
+  if(key===film.key)return;
+  const before=new Set(film.key.split('|')[1]?.split(',').filter(Boolean)??[]);film.key=key;
+  for(const f of frames)if(film.ready&&!before.has(String(f.born)))film.fresh.set(f.born,elapsed);
+  film.ready=true;
+  for(const o of [...film.group.children]){o.removeFromParent();o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();}
+  film.buttons=[];
+  const n=Math.max(limit,frames.length),w=Math.max(.15,n*FILM_STEP+.02),h=FILM_H+.042,px=3000;
+  const plate=textTexture(Math.round(w*px),Math.round(h*px),(g,cw,ch)=>drawFilmPlate(g,cw,ch,{taken:frames.length,limit}));
+  film.plate=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:plate,transparent:true,toneMapped:false,depthTest:false,depthWrite:true,alphaTest:.05}));
+  film.plate.renderOrder=20;film.group.add(film.plate);
+  for(let i=0;i<n;i++){
+    const f=frames[i],item={label:f?`Photo ${i+1}`:`Slot ${i+1}`,act:()=>openCard('photos')};
+    let hover=false;const tex=textTexture(240,300,(g,cw,ch)=>drawFilmSlot(g,cw,ch,{number:i+1,empty:!f,img:f?cardImage(f.thumbnail,()=>tex.userData.draw()):null,glow:f?film.glowOf(f):0},hover));
+    const b=new THREE.Mesh(new THREE.PlaneGeometry(FILM_W,FILM_H),new THREE.MeshBasicMaterial({map:tex,transparent:true,toneMapped:false,depthTest:false,depthWrite:true,alphaTest:.05}));
+    b.userData={act:item.act,label:item.label,disabled:false,where:'film',rest:new V3((i-(n-1)/2)*FILM_STEP,-.012,.003),size:[FILM_W,FILM_H],frame:f??null,redraw:()=>tex.userData.draw(),
+      setHover:on=>{if(on===hover)return;hover=on;tex.userData.draw();}};
+    b.position.copy(b.userData.rest);b.renderOrder=21;film.group.add(b);film.buttons.push(b);
+  }
+}
+film.glowOf=f=>{const at=film.fresh.get(f.born);return at==null?0:Math.max(0,1-(elapsed-at)/2.2);};
+function updateFilm(dt){
+  syncFilm();
+  const g=film.group,a=vr.anchor,head=vr.cam.position;
+  const toward=head.clone().sub(a.pos).setY(0);if(toward.lengthSq()<1e-6)toward.set(0,0,1);toward.normalize();
+  const right=new V3(toward.z,0,-toward.x);
+  const at=a.pos.clone().addScaledVector(right,ISLAND+.1).addScaledVector(toward,ISLAND*.65).add(new V3(0,ISLAND*.8+.06,0));
+  const show=vr.hold.state!=='held'&&!grab.key&&!story.open&&!vcard.kind&&!maker?.editing&&!practice.active&&level.frames>0;
+  film.shown+=((show?1:0)-film.shown)*Math.min(1,dt*10);
+  if(film.shown<.05)g.position.copy(at);else if(!film.buttons.includes(menu.poke))g.position.lerp(at,1-Math.exp(-14*dt));
+  g.lookAt(head);g.visible=film.shown>.03;
+  // A new photo pops into its slot.
+  for(const b of film.buttons){
+    const f=b.userData.frame,glow=f?film.glowOf(f):0;
+    if(glow>0||b.userData.glowing){b.userData.glowing=glow>0;b.userData.redraw();}
+    const t=f&&film.fresh.has(f.born)?Math.min(1,(elapsed-film.fresh.get(f.born))/.35):1,k=t<1?.6+.4*(1-(1-t)**3)*1.08:1;b.scale.setScalar(Math.min(1.04,k));
+  }
+  g.updateMatrixWorld(true);
+}
+function hideFilm(){film.group.visible=false;film.shown=0;}
 // Follow the island's position, with fixed room-space offsets independent of its size.
 // Ease movement, and keep the target steady while a finger is pressing a button.
 function updateShelf(dt){
@@ -2962,7 +3011,7 @@ function vrFrame(dt){
       }
     }else if(walker.state!=='walking')vr.align=null;
   }
-  syncVRButtons();updateVRHands(dt);updateGrab();updateShelf(dt);updateCard(dt);updatePoke();
+  syncVRButtons();updateVRHands(dt);updateGrab();updateShelf(dt);updateFilm(dt);updateCard(dt);updatePoke();
   if(vr.skyFor!==palette){vr.skyFor=palette;vr.sky.material.map?.dispose();vr.sky.material.map=textTexture(16,256,(g,w,h)=>{const s=g.createLinearGradient(0,0,0,h);s.addColorStop(0,palette.sky[0]);s.addColorStop(.5,palette.sky[1]);s.addColorStop(1,palette.sky[2]);g.fillStyle=s;g.fillRect(0,0,w,h);});vr.sky.material.needsUpdate=true;}
   vr.sky.visible=!(vr.ar&&settings.vrRoom);
   // The panel and buttons face you from the island's near side.
@@ -3406,10 +3455,10 @@ window.__illusion={
   vrAim:p=>{const q=vrScreen(new V3(...p)),n=q.z<1?flatPick(q):null;return {q:[q.x,q.y,q.z],n:n&&[n.x,n.y,n.z]};},
   vrTilt:(x,y)=>{const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0));for(const p of [vr.anchor,vr.goal])p.quat.premultiply(q);},vrReach:()=>[...routes().keys()].filter(n=>n!==walker.node).map(n=>({at:[n.x,n.y,n.z],room:scene.localToWorld(top(n)).toArray()})),
   vrSize:size=>{vr.goal.size=THREE.MathUtils.clamp(size,.12,.6);},
-  vrPress:label=>[...vcard.buttons,...vr.buttons].find(b=>b.userData.label===label)?.userData.act(),
+  vrPress:label=>[...vcard.buttons,...vr.buttons,...film.buttons].find(b=>b.userData.label===label)?.userData.act(),
   vr:()=>({on:vr.on,starting:!!vr.starting,turn:vr.turn,head:vr.cam.position.toArray(),hands:vr.hands.map(h=>({look:h.model?.mode??null,mesh:h.model?.mesh??null,trusted:h.trusted!==false,wrist:h.hand.joints.wrist?.position.toArray()??null,tip:h.hand.joints['index-finger-tip']?.visible?h.hand.joints['index-finger-tip'].position.toArray():null,side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,gap:h.gap,grip:!!h.grip,grabbing:!!h.grabbing,open:h.shape?.open??null,center:h.shape?.center.toArray()??null,ray:h.hasRay?{origin:h.rayOrigin.toArray(),dir:h.rayDir.toArray()}:null,target:h.target?.node?{at:[h.target.node.x,h.target.node.y,h.target.node.z],reach:!!h.target.reach,touch:!!h.target.touch}:h.target?.button?{button:h.target.button.userData.label}:null})),grabbed:!!grab.key,ar:!!vr.ar,room:!!(vr.ar&&settings.vrRoom),sky:!!vr.sky?.visible,prints:frames.map(f=>({visible:f.group.visible,scale:f.group.scale.x})),align:vr.align?{yaw:vr.align.yaw,pitch:vr.align.pitch}:null,snap:VR_SNAP_DEG,pointer:{hover:!!vr.hover?.visible,trail:pointer.trail.filter(m=>m.visible).length,beams:vr.hands.filter(h=>h.beam?.visible).length},
     controllers:vr.controllers.map(h=>({side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,origin:h.origin.toArray(),direction:h.direction.toArray()})),
-    framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,buttons:[...vr.buttons,...vcard.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
+    framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,film:{visible:film.group.visible,slots:film.buttons.map(b=>b.userData.label),at:film.group.getWorldPosition(new V3()).toArray()},buttons:[...vr.buttons,...vcard.buttons,...film.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
   enterVR,exitVR:()=>renderer.xr.getSession()?.end(),nextLevel,albumChapters:()=>albumChapters().map(c=>({name:c.name,levels:c.levels})),
   // A point on the island (level coordinates) in the room.
   toRoom:p=>scene.localToWorld(new V3(...p)).toArray()
