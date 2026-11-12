@@ -2273,7 +2273,7 @@ function syncFilm(){
   film.plate.renderOrder=20;film.group.add(film.plate);
   for(let i=0;i<n;i++){
     const f=frames[i],item={label:f?`Photo ${i+1}`:`Slot ${i+1}`,act:()=>openCard('photos')};
-    let hover=false;const tex=textTexture(240,300,(g,cw,ch)=>drawFilmSlot(g,cw,ch,{number:i+1,empty:!f,img:f?cardImage(f.thumbnail,()=>tex.userData.draw()):null,glow:f?film.glowOf(f):0},hover));
+    let hover=false;const tex=textTexture(240,300,(g,cw,ch)=>drawFilmSlot(g,cw,ch,{number:i+1,empty:!f,img:f?cardImage(f.vrShot??f.thumbnail,()=>tex.userData.draw()):null,glow:f?film.glowOf(f):0},hover));
     const b=new THREE.Mesh(new THREE.PlaneGeometry(FILM_W,FILM_H),new THREE.MeshBasicMaterial({map:tex,transparent:true,toneMapped:false,depthTest:false,depthWrite:true,alphaTest:.05}));
     b.userData={act:item.act,label:item.label,disabled:false,where:'film',rest:new V3((i-(n-1)/2)*FILM_STEP,-.012,.003),size:[FILM_W,FILM_H],frame:f??null,redraw:()=>tex.userData.draw(),
       setHover:on=>{if(on===hover)return;hover=on;tex.userData.draw();}};
@@ -2995,11 +2995,34 @@ function takeVRPhoto(){
 // It appears where your hands framed it, as a clear print of that one view, so you can see the paths
 // meet as one. It stays a moment, then flies into its slot beside the island.
 const PRINT_PAPER='#fbf7ee';
+// What you saw through your hands: the island as it stands in the room, from between your eyes, cropped
+// to the frame's corners (in room space). Only the sky is kept of everything around the island.
+function eyeShot(corners,width=720){
+  const cam=new THREE.PerspectiveCamera();cam.position.copy(vr.cam.position);cam.quaternion.copy(vr.cam.quaternion);cam.updateMatrixWorld(true);
+  const near=.02,pts=corners.map(c=>c.clone().applyMatrix4(cam.matrixWorldInverse));
+  const xs=pts.map(p=>p.x/Math.max(.01,-p.z)*near),ys=pts.map(p=>p.y/Math.max(.01,-p.z)*near);
+  const l=Math.min(...xs),r=Math.max(...xs),t=Math.max(...ys),b=Math.min(...ys);
+  cam.projectionMatrix.makePerspective(l,r,t,b,near,100);cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+  const w=width,h=Math.max(24,Math.min(width*2,Math.round(width*(t-b)/(r-l))));
+  const kids=vr.rig.children.map(o=>[o,o.visible]);for(const [o] of kids)o.visible=o===vr.sky&&o.visible;
+  const prints=frames.map(f=>f.group.visible),hints=vhint.group.visible;for(const f of frames)f.group.visible=false;vhint.group.visible=false;
+  const rt=new THREE.WebGLRenderTarget(w,h,{samples:4});rt.texture.colorSpace=THREE.SRGBColorSpace;
+  const xr=renderer.xr.enabled,clear=renderer.getClearColor(new THREE.Color()),alpha=renderer.getClearAlpha(),old=renderer.getRenderTarget();
+  renderer.xr.enabled=false;renderer.setClearColor(new THREE.Color(palette.sky[1]),1);
+  scene.updateMatrixWorld(true);renderer.setRenderTarget(rt);renderer.render(scene,cam);renderer.setRenderTarget(old);
+  renderer.xr.enabled=xr;renderer.setClearColor(clear,alpha);
+  for(const [o,v] of kids)o.visible=v;frames.forEach((f,i)=>f.group.visible=prints[i]);vhint.group.visible=hints;
+  const px=new Uint8Array(w*h*4);renderer.readRenderTargetPixels(rt,0,0,w,h,px);rt.dispose();
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d'),img=g.createImageData(w,h);
+  for(let y=0;y<h;y++)img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);g.putImageData(img,0,0);
+  g.globalCompositeOperation='destination-over';g.fillStyle=palette.sky[1];g.fillRect(0,0,w,h);g.globalCompositeOperation='source-over';
+  return c;
+}
 const vrPrint={group:null,mesh:null,frame:null,born:0,from:null,size:1};
 function hideVRPrint(){const g=vrPrint.group;if(!g)return;for(const b of film.buttons)b.visible=true;g.removeFromParent();g.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});vrPrint.group=vrPrint.mesh=vrPrint.frame=null;}
 function showVRPrint(frame,corners){
   hideVRPrint();
-  const shot=photoCrop(frame.poly,frame.cam,frame.w,frame.h,720),rim=.035,foot=.13;
+  const shot=eyeShot(corners,720),rim=.035,foot=.13;frame.vrShot=shot.toDataURL('image/jpeg',.85);
   const top=Math.round(shot.width*rim),cw=shot.width+2*top,ch=Math.round(shot.height+shot.width*(rim+foot));
   const tex=textTexture(cw,ch,g=>{
     g.clearRect(0,0,cw,ch);g.fillStyle=PRINT_PAPER;g.beginPath();g.roundRect(0,0,cw,ch,cw*.012);g.fill();
