@@ -634,16 +634,10 @@ function animateJoins(){
     const developed=f.flashAt>0?Math.min(1,(elapsed-f.flashAt)/1.4):0;
     const life=level.fade?Math.min(1,Math.max(0,(level.fade-(elapsed-f.born))/(level.fade*.4))):1;
     const v=viewDir(camera),n=viewDir(f.cam),facing=Math.abs(v[0]*n[0]+v[1]*n[1]+v[2]*n[2]),edgeOn=Math.min(1,Math.max(0,(facing-.18)/.25));
-    // In a headset a print would hang in the air from every side. It shrinks away to a small faint card
-    // and opens out again as you come round toward the view it was taken from (and just after the shot).
-    let shown=1;
-    if(vr.on){
-      const want=Math.max(1-Math.min(1,Math.max(0,(off-10)/18)),Math.max(0,1-(elapsed-f.born)/2.5));
-      f.vrShow??=want;f.vrShow+=(want-f.vrShow)*Math.min(1,Math.max(0,elapsed-(f.vrAt??elapsed))*5);f.vrAt=elapsed;
-      shown=f.vrShow*f.vrShow*(3-2*f.vrShow);const k=.12+.88*shown,c=f.middle??=f.corners.reduce((a,p)=>a.add(p),new V3()).multiplyScalar(1/f.corners.length);
-      f.group.scale.setScalar(k);f.group.position.copy(c).multiplyScalar(1-k);f.group.visible=shown>.02;
-    }else if(f.vrShow!=null){f.vrShow=null;f.group.scale.setScalar(1);f.group.position.set(0,0,0);}
-    f.photo.material.opacity=seen*.95*life*edgeOn*shown;f.border.material.opacity=(.25+seen*.75)*edgeOn*shown;f.haze.material.opacity=(seen*(.75-.65*developed)+Math.max(0,1-(elapsed-f.born)/.6)*.9)*edgeOn*shown;
+    // In a headset the photo shows as a clear print where you framed it (see showVRPrint) instead of
+    // hanging in the world, so this one stays hidden.
+    if(vr.on)f.group.visible=false;
+    f.photo.material.opacity=seen*.95*life*edgeOn;f.border.material.opacity=(.25+seen*.75)*edgeOn;f.haze.material.opacity=seen*(.75-.65*developed)*edgeOn;
     // The line is the illusion's secret: from its photo's view (and just around it) it is not there and
     // the two paths simply meet; turn away and it fades in.
     const reveal=Math.min(1,Math.max(0,(off-1.5)/6));
@@ -2106,10 +2100,12 @@ function placeIsland(){
 function renderFlat(rt,cam=camera){
   const xr=renderer.xr.enabled,pos=scene.position.clone(),rot=scene.rotation.clone(),sc=scene.scale.clone(),fog=scene.fog,rig=vr.rig.visible;
   renderer.xr.enabled=false;scene.position.set(0,0,0);scene.rotation.set(0,0,0);scene.scale.setScalar(1);art.scale(1);scene.fog=vr.on?vr.fog:fog;vr.rig.visible=false;const hints=vhint.group.visible;vhint.group.visible=false;
+  // Photos already taken are not in the picture: a new photo shows the world, not the prints hanging in it.
+  const prints=frames.map(f=>f.group.visible);for(const f of frames)f.group.visible=false;
   nightAir?.update(0,cam);
   scene.updateMatrixWorld(true);
   const old=renderer.getRenderTarget();renderer.setRenderTarget(rt);renderer.render(scene,cam);renderer.setRenderTarget(old);
-  renderer.xr.enabled=xr;scene.position.copy(pos);scene.rotation.copy(rot);scene.scale.copy(sc);art.scale(sc.x);scene.fog=fog;vr.rig.visible=rig;vhint.group.visible=hints;scene.updateMatrixWorld(true);
+  renderer.xr.enabled=xr;scene.position.copy(pos);scene.rotation.copy(rot);scene.scale.copy(sc);art.scale(sc.x);scene.fog=fog;vr.rig.visible=rig;vhint.group.visible=hints;frames.forEach((f,i)=>f.group.visible=prints[i]);scene.updateMatrixWorld(true);
   nightAir?.update(0,camera);
 }
 // The flat view as a picture (for the album), on the level's sky.
@@ -2141,12 +2137,13 @@ function albumPreview(){
   try{return flatCanvas(w,cam,h).toDataURL('image/webp',.92);}finally{for(const o of hidden)o.visible=true;}
 }
 // Show the part the player actually framed, from its saved camera, at thumbnail resolution.
-function photoThumbnail(poly,cam=camera,w=W,h=H){
+function photoThumbnail(poly,cam=camera,w=W,h=H){return photoCrop(poly,cam,w,h,256).toDataURL('image/jpeg',.85);}
+function photoCrop(poly,cam=camera,w=W,h=H,width=256){
   const xs=poly.map(p=>p.x/w),ys=poly.map(p=>p.y/h),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),crop=cam.clone();
   crop.left=THREE.MathUtils.lerp(cam.left,cam.right,x0);crop.right=THREE.MathUtils.lerp(cam.left,cam.right,x1);
   crop.top=THREE.MathUtils.lerp(cam.top,cam.bottom,y0);crop.bottom=THREE.MathUtils.lerp(cam.top,cam.bottom,y1);crop.updateProjectionMatrix();
-  const height=Math.max(24,Math.min(512,Math.round(256*(crop.top-crop.bottom)/(crop.right-crop.left))));
-  return flatCanvas(256,crop,height).toDataURL('image/jpeg',.85);
+  const height=Math.max(24,Math.min(width*2,Math.round(width*(crop.top-crop.bottom)/(crop.right-crop.left))));
+  return flatCanvas(width,crop,height);
 }
 function textTexture(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());t.userData.draw=()=>{draw(c.getContext('2d'),w,h);t.needsUpdate=true;};t.userData.draw();return t;}
 function buildVR(){
@@ -2989,7 +2986,54 @@ function takeVRPhoto(){
   const f=vr.framing;vr.framing=null;for(const h of [...vr.hands,...vr.controllers])if(h.pinched||h.side)h.used=true;
   vr.quad.visible=vr.outline.visible=false;if(vr.frameLabel)vr.frameLabel.visible=false;
   if(!f||f.corners[0].distanceTo(f.corners[2])<.05)return;
+  const last=frames.at(-1);
   addFrame(f.poly);
+  const frame=frames.at(-1);
+  if(frame&&frame!==last)showVRPrint(frame,f.corners);
+}
+// ---------- The photo you just took, in a headset ----------
+// It appears where your hands framed it, as a clear print of that one view, so you can see the paths
+// meet as one. It stays a moment, then flies into its slot beside the island.
+const PRINT_PAPER='#fbf7ee';
+const vrPrint={group:null,mesh:null,frame:null,born:0,from:null,size:1};
+function hideVRPrint(){const g=vrPrint.group;if(!g)return;for(const b of film.buttons)b.visible=true;g.removeFromParent();g.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});vrPrint.group=vrPrint.mesh=vrPrint.frame=null;}
+function showVRPrint(frame,corners){
+  hideVRPrint();
+  const shot=photoCrop(frame.poly,frame.cam,frame.w,frame.h,720),rim=.035,foot=.13;
+  const top=Math.round(shot.width*rim),cw=shot.width+2*top,ch=Math.round(shot.height+shot.width*(rim+foot));
+  const tex=textTexture(cw,ch,g=>{
+    g.clearRect(0,0,cw,ch);g.fillStyle=PRINT_PAPER;g.beginPath();g.roundRect(0,0,cw,ch,cw*.012);g.fill();
+    g.drawImage(shot,top,top);g.strokeStyle='rgba(43,33,64,.12)';g.lineWidth=2;g.strokeRect(top+1,top+1,shot.width-2,shot.height-2);
+  });
+  tex.userData.draw();
+  const k=Math.max(.12,corners[0].distanceTo(corners[1]))/shot.width,w=cw*k,h=ch*k;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:0,toneMapped:false,depthTest:false,depthWrite:false,fog:false}));
+  // The picture itself sits where the frame was; the wider foot of the paper hangs below it.
+  mesh.position.y=-(ch-shot.height-2*top)/2*k;mesh.renderOrder=24;
+  const g=new THREE.Group();g.add(mesh);
+  g.position.copy(corners.reduce((a,p)=>a.add(p),new V3()).multiplyScalar(1/corners.length));g.quaternion.copy(vr.cam.quaternion);
+  vr.rig.add(g);Object.assign(vrPrint,{group:g,mesh,frame,born:elapsed,from:{at:g.position.clone(),quat:g.quaternion.clone()},size:w});
+}
+function updateVRPrint(){
+  const g=vrPrint.group;if(!g)return;
+  const f=vrPrint.frame;if(!vr.on||!frames.includes(f)){hideVRPrint();return;}
+  const t=elapsed-vrPrint.born,HOLD=2.4,FLY=.65,slot=film.buttons.find(b=>b.userData.frame===f),into=film.group.visible&&slot;
+  // It comes in softly, with no flash; if your photos are out of sight it fades where it is instead.
+  vrPrint.mesh.material.opacity=Math.min(1,t/.25)*(into||t<HOLD?1:Math.max(0,1-(t-HOLD)/FLY));
+  if(slot)slot.visible=false;
+  if(t<HOLD){g.scale.setScalar(.94+.06*(1-(1-Math.min(1,t/.3))**3));return;}
+  const e=Math.min(1,(t-HOLD)/FLY),ease=e*e*(3-2*e);
+  if(into){
+    slot.updateMatrixWorld(true);const at=vr.rig.worldToLocal(slot.getWorldPosition(new V3()));
+    const q=vr.rig.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(slot.getWorldQuaternion(new THREE.Quaternion()));
+    g.position.lerpVectors(vrPrint.from.at,at,ease);g.quaternion.slerpQuaternions(vrPrint.from.quat,q,ease);
+    g.scale.setScalar(THREE.MathUtils.lerp(1,FILM_W*.9/vrPrint.size,ease));
+  }
+  if(e>=1){
+    // It lands: the slot shows it and glows.
+    if(slot){slot.visible=true;film.fresh.set(f.born,elapsed);}
+    hideVRPrint();
+  }
 }
 function vrFrame(dt){
   if(scene.fog){vr.fog=scene.fog;scene.fog=null;}
@@ -3011,7 +3055,7 @@ function vrFrame(dt){
       }
     }else if(walker.state!=='walking')vr.align=null;
   }
-  syncVRButtons();updateVRHands(dt);updateGrab();updateShelf(dt);updateFilm(dt);updateCard(dt);updatePoke();
+  syncVRButtons();updateVRHands(dt);updateGrab();updateShelf(dt);updateFilm(dt);updateVRPrint();updateCard(dt);updatePoke();
   if(vr.skyFor!==palette){vr.skyFor=palette;vr.sky.material.map?.dispose();vr.sky.material.map=textTexture(16,256,(g,w,h)=>{const s=g.createLinearGradient(0,0,0,h);s.addColorStop(0,palette.sky[0]);s.addColorStop(.5,palette.sky[1]);s.addColorStop(1,palette.sky[2]);g.fillStyle=s;g.fillRect(0,0,w,h);});vr.sky.material.needsUpdate=true;}
   vr.sky.visible=!(vr.ar&&settings.vrRoom);
   // The panel and buttons face you from the island's near side.
@@ -3458,7 +3502,7 @@ window.__illusion={
   vrPress:label=>[...vcard.buttons,...vr.buttons,...film.buttons].find(b=>b.userData.label===label)?.userData.act(),
   vr:()=>({on:vr.on,starting:!!vr.starting,turn:vr.turn,head:vr.cam.position.toArray(),hands:vr.hands.map(h=>({look:h.model?.mode??null,mesh:h.model?.mesh??null,trusted:h.trusted!==false,wrist:h.hand.joints.wrist?.position.toArray()??null,tip:h.hand.joints['index-finger-tip']?.visible?h.hand.joints['index-finger-tip'].position.toArray():null,side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,gap:h.gap,grip:!!h.grip,grabbing:!!h.grabbing,open:h.shape?.open??null,center:h.shape?.center.toArray()??null,ray:h.hasRay?{origin:h.rayOrigin.toArray(),dir:h.rayDir.toArray()}:null,target:h.target?.node?{at:[h.target.node.x,h.target.node.y,h.target.node.z],reach:!!h.target.reach,touch:!!h.target.touch}:h.target?.button?{button:h.target.button.userData.label}:null})),grabbed:!!grab.key,ar:!!vr.ar,room:!!(vr.ar&&settings.vrRoom),sky:!!vr.sky?.visible,prints:frames.map(f=>({visible:f.group.visible,scale:f.group.scale.x})),align:vr.align?{yaw:vr.align.yaw,pitch:vr.align.pitch}:null,snap:VR_SNAP_DEG,pointer:{hover:!!vr.hover?.visible,trail:pointer.trail.filter(m=>m.visible).length,beams:vr.hands.filter(h=>h.beam?.visible).length},
     controllers:vr.controllers.map(h=>({side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,origin:h.origin.toArray(),direction:h.direction.toArray()})),
-    framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,film:{visible:film.group.visible,slots:film.buttons.map(b=>b.userData.label),at:film.group.getWorldPosition(new V3()).toArray()},buttons:[...vr.buttons,...vcard.buttons,...film.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
+    framing:!!vr.framing,frameLabel:vr.frameLabel?.visible?vr.frameWords:null,cues:{near:cueNear(),edges:cue.edges.filter(m=>m.visible).length,focus:!!cue.focus?.g.visible,focusCurrent:!!cue.focus?.g.visible&&pairs.some(p=>p.seam===cue.focus.target),gold:!!cue.focus?.g.visible&&cue.focus.mat.color.getHex()===0xffd36b},hint:{shown:vhint.group.visible,tier:hint.tier,ring:!!vhint.ring?.visible,ringAt:vhint.ring?.visible?vhint.ring.getWorldPosition(new V3()).toArray():null,edges:vhint.edges.filter(m=>m.visible).length,pulses:vhint.pulses.filter(m=>m.visible).length,ghost:!!vhint.ghost?.visible,prints:vhint.prints.filter(m=>m.visible).length},guide:vr.guide?.step??null,guideTarget:vr.guide?.target??null,hold:vr.hold.state,charge:vr.hold.charge,palm:(p=>p&&{normal:p.normal.toArray(),open:p.open,pinched:p.pinched})(palmOf(vr.hands.find(h=>h.side==='left'))),island:{at:vr.anchor.pos.toArray(),size:vr.anchor.size,up:Y_UP.clone().applyQuaternion(vr.anchor.quat).toArray()},panel:vr.panelText,panelAt:vr.panel?.getWorldPosition(new V3()).toArray(),panelSize:vr.panel?vr.panel.getWorldScale(new V3()).x:null,story:story.current(),card:vcard.kind,print:vrPrint.group?{opacity:vrPrint.mesh.material.opacity,scale:vrPrint.group.scale.x,at:vrPrint.group.getWorldPosition(new V3()).toArray()}:null,film:{visible:film.group.visible,slots:film.buttons.map(b=>b.userData.label),at:film.group.getWorldPosition(new V3()).toArray()},buttons:[...vr.buttons,...vcard.buttons,...film.buttons].map(b=>({label:b.userData.label,disabled:b.userData.disabled,where:b.userData.where??null,at:b.getWorldPosition(new V3()).toArray()})),menu:{scale:vr.tray.getWorldScale(new V3()).x,shown:menu.shown,visible:vr.tray.visible,at:vr.tray.getWorldPosition(new V3()).toArray(),normal:new V3(0,0,1).transformDirection(vr.tray.matrixWorld).toArray()}}),
   enterVR,exitVR:()=>renderer.xr.getSession()?.end(),nextLevel,albumChapters:()=>albumChapters().map(c=>({name:c.name,levels:c.levels})),
   // A point on the island (level coordinates) in the room.
   toRoom:p=>scene.localToWorld(new V3(...p)).toArray()
