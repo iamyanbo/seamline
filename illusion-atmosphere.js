@@ -76,8 +76,9 @@ export function createNightAir(parent,box,name,anchors=[]){
   }
   const dummy=new THREE.Object3D();
   const direction=new V();
-  function update(dt,camera,{reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,low=false}={}){
-    group.visible=!low;if(low)return;
+  function update(dt,camera,{reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,low=false,flat=true}={}){
+    // The far sky is a flat backdrop for the screen camera; in a headset it would sit in the room as a small box of dots.
+    group.visible=!low;sky.visible=flat;if(low)return;
     if(!reduced)clock+=dt;
     if(camera){
       // A distant sky stays behind the model as the player zooms and turns.

@@ -315,7 +315,7 @@ function buildAir(box){
 }
 function updateAir(dt){
   const still=reducedMotion()||settings.quality==='low';
-  nightAir?.update(still?0:dt,camera,{reduced:still,low:settings.quality==='low'});
+  nightAir?.update(still?0:dt,camera,{reduced:still,low:settings.quality==='low',flat:!vr.on});
   if(still){for(const o of motes)o.m.visible=false;if(flock)flock.g.visible=false;return;}
   if(flock)flock.g.visible=true;
   for(const o of motes){
@@ -2106,7 +2106,7 @@ function renderFlat(rt,cam=camera){
   scene.updateMatrixWorld(true);
   const old=renderer.getRenderTarget();renderer.setRenderTarget(rt);renderer.render(scene,cam);renderer.setRenderTarget(old);
   renderer.xr.enabled=xr;scene.position.copy(pos);scene.rotation.copy(rot);scene.scale.copy(sc);art.scale(sc.x);scene.fog=fog;vr.rig.visible=rig;vhint.group.visible=hints;frames.forEach((f,i)=>f.group.visible=prints[i]);scene.updateMatrixWorld(true);
-  nightAir?.update(0,camera);
+  nightAir?.update(0,camera,{flat:!vr.on});
 }
 // The flat view as a picture (for the album), on the level's sky.
 function flatCanvas(w=1024,cam=camera,h=Math.round(w*H/W)){
@@ -2149,6 +2149,13 @@ function textTexture(w,h,draw){const c=document.createElement('canvas');c.width=
 function buildVR(){
   // The sky all round, in the level's colours.
   vr.sky=new THREE.Mesh(new THREE.SphereGeometry(40,32,16),new THREE.MeshBasicMaterial({side:THREE.BackSide,depthWrite:false,fog:false}));vr.rig.add(vr.sky);
+  // Night places get their stars on the headset sky: far pinpoints all round, thicker overhead, none below the horizon.
+  vr.stars=new THREE.Group();vr.sky.add(vr.stars);
+  for(const [n,size,opacity] of [[420,2,.6],[60,3.5,.75]]){
+    const p=[];for(let i=0;i<n;i++){const y=Math.pow(Math.random(),.7)*.96+.04,a=Math.random()*Math.PI*2,r=Math.sqrt(1-y*y);p.push(Math.cos(a)*r*36,y*36,Math.sin(a)*r*36);}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+    vr.stars.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xe5e8ff,size,sizeAttenuation:false,transparent:true,opacity,depthWrite:false,fog:false})));
+  }
   // The panel: the level's name and what to do.
   const panelTex=textTexture(1024,300,(g,w,h)=>drawPanel(g,w,h,vr.panelText));
   vr.panel=new THREE.Mesh(new THREE.PlaneGeometry(.48,.1406),new THREE.MeshBasicMaterial({map:panelTex,transparent:true,depthTest:false,depthWrite:true,alphaTest:.05,toneMapped:false}));vr.panel.renderOrder=20;vr.dock.add(vr.panel);
@@ -2287,7 +2294,7 @@ function updateFilm(dt){
   const toward=head.clone().sub(a.pos).setY(0);if(toward.lengthSq()<1e-6)toward.set(0,0,1);toward.normalize();
   const right=new V3(toward.z,0,-toward.x);
   const at=a.pos.clone().addScaledVector(right,ISLAND+.1).addScaledVector(toward,ISLAND*.65).add(new V3(0,ISLAND*.8+.06,0));
-  const show=vr.hold.state!=='held'&&!grab.key&&!story.open&&!vcard.kind&&!maker?.editing&&!practice.active&&level.frames>0;
+  const show=!vr.cinema&&vr.hold.state!=='held'&&!grab.key&&!story.open&&!vcard.kind&&!maker?.editing&&!practice.active&&level.frames>0;
   film.shown+=((show?1:0)-film.shown)*Math.min(1,dt*10);
   if(film.shown<.05)g.position.copy(at);else if(!film.buttons.includes(menu.poke))g.position.lerp(at,1-Math.exp(-14*dt));
   g.lookAt(head);g.visible=film.shown>.03;
@@ -2307,7 +2314,7 @@ function updateShelf(dt){
   const toward=head.clone().sub(a.pos).setY(0);if(toward.lengthSq()<1e-6)toward.set(0,0,1);toward.normalize();
   const left=new V3(-toward.z,0,toward.x);
   const at=a.pos.clone().addScaledVector(left,ISLAND+.08).addScaledVector(toward,ISLAND*.65).add(new V3(0,ISLAND*.8+.06,0));
-  const show=vr.hold.state!=='held'&&!grab.key&&!story.open&&!vcard.kind&&vr.buttons.some(b=>b.userData.where==='menu');
+  const show=!vr.cinema&&vr.hold.state!=='held'&&!grab.key&&!story.open&&!vcard.kind&&vr.buttons.some(b=>b.userData.where==='menu');
   menu.shown+=((show?1:0)-menu.shown)*Math.min(1,dt*10);
   if(menu.shown<.05)g.position.copy(at);else if(!menu.poke)g.position.lerp(at,1-Math.exp(-14*dt));
   g.lookAt(head);g.scale.setScalar(1);g.visible=menu.shown>.03;g.updateMatrixWorld(true);
@@ -3080,13 +3087,13 @@ function vrFrame(dt){
   }
   syncVRButtons();updateVRHands(dt);updateGrab();updateShelf(dt);updateFilm(dt);updateVRPrint();updateCard(dt);updatePoke();
   if(vr.skyFor!==palette){vr.skyFor=palette;vr.sky.material.map?.dispose();vr.sky.material.map=textTexture(16,256,(g,w,h)=>{const s=g.createLinearGradient(0,0,0,h);s.addColorStop(0,palette.sky[0]);s.addColorStop(.5,palette.sky[1]);s.addColorStop(1,palette.sky[2]);g.fillStyle=s;g.fillRect(0,0,w,h);});vr.sky.material.needsUpdate=true;}
-  vr.sky.visible=!(vr.ar&&settings.vrRoom);
+  vr.sky.visible=!(vr.ar&&settings.vrRoom);vr.stars.visible=(nightAir?.stats.stars??0)>0;
   // The panel and buttons face you from the island's near side.
   const at=vr.anchor.pos,toward=vr.cam.position.clone().sub(at).setY(0);const a=Math.atan2(toward.x,toward.z),k=vr.anchor.size/ISLAND;
   // Gameplay UI keeps both its size and offset during resizing; moving it in depth would
   // change its apparent size. The level maker tools retain their workspace scaling.
   const fixed=!vr.buttonsKey?.startsWith('maker');
-  vr.dock.visible=vr.hold.state!=='held';vr.dock.scale.setScalar(fixed?1:k);
+  vr.dock.visible=vr.hold.state!=='held'&&!vr.cinema;vr.dock.scale.setScalar(fixed?1:k);
   vr.dock.position.copy(at).add(new V3(Math.sin(a)*.05*(fixed?1:k),0,Math.cos(a)*.05*(fixed?1:k)));vr.dock.rotation.set(0,a,0);vr.panel.position.set(0,ISLAND+.12,-.05);
   const entry=story.current();
   if(entry){
@@ -3521,6 +3528,7 @@ window.__illusion={
   inject:list=>{injected=list;},
   vrAim:p=>{const q=vrScreen(new V3(...p)),n=q.z<1?flatPick(q):null;return {q:[q.x,q.y,q.z],n:n&&[n.x,n.y,n.z]};},
   vrTilt:(x,y)=>{const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0));for(const p of [vr.anchor,vr.goal])p.quat.premultiply(q);},vrReach:()=>[...routes().keys()].filter(n=>n!==walker.node).map(n=>({at:[n.x,n.y,n.z],room:scene.localToWorld(top(n)).toArray()})),
+  cinema:on=>{vr.cinema=!!on;},clockNow:()=>elapsed,bounds:()=>{const b=new THREE.Box3().setFromObject(blockGroup);return {min:b.min.toArray(),max:b.max.toArray()};},// hides the panel, shelf and photo stand (for filming the trailer)
   vrSize:size=>{vr.goal.size=THREE.MathUtils.clamp(size,.12,.6);},
   vrPress:label=>[...vcard.buttons,...vr.buttons,...film.buttons].find(b=>b.userData.label===label)?.userData.act(),
   vr:()=>({on:vr.on,starting:!!vr.starting,turn:vr.turn,head:vr.cam.position.toArray(),hands:vr.hands.map(h=>({look:h.model?.mode??null,mesh:h.model?.mesh??null,trusted:h.trusted!==false,wrist:h.hand.joints.wrist?.position.toArray()??null,tip:h.hand.joints['index-finger-tip']?.visible?h.hand.joints['index-finger-tip'].position.toArray():null,side:h.side,pinched:h.pinched,point:h.point?.toArray()??null,gap:h.gap,grip:!!h.grip,grabbing:!!h.grabbing,open:h.shape?.open??null,center:h.shape?.center.toArray()??null,ray:h.hasRay?{origin:h.rayOrigin.toArray(),dir:h.rayDir.toArray()}:null,target:h.target?.node?{at:[h.target.node.x,h.target.node.y,h.target.node.z],reach:!!h.target.reach,touch:!!h.target.touch}:h.target?.button?{button:h.target.button.userData.label}:null})),grabbed:!!grab.key,ar:!!vr.ar,room:!!(vr.ar&&settings.vrRoom),sky:!!vr.sky?.visible,prints:frames.map(f=>({visible:f.group.visible,scale:f.group.scale.x})),align:vr.align?{yaw:vr.align.yaw,pitch:vr.align.pitch}:null,snap:VR_SNAP_DEG,pointer:{hover:!!vr.hover?.visible,trail:pointer.trail.filter(m=>m.visible).length,beams:vr.hands.filter(h=>h.beam?.visible).length},
